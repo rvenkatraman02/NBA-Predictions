@@ -1,0 +1,285 @@
+---
+title: 'Playoffs 2: NBA Predictions'
+author: "Rohan Venkatraman"
+date: "2023-03-07"
+output: html_document
+---
+
+```{r setup, warnings=FALSE,message=FALSE include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(DT)
+library(kableExtra)
+library(ggplot2)
+library(data.table)
+library(magrittr)
+library(nbastatR)
+```
+
+# Import New Data
+
+## API to pull from NBA Advanced Stats
+```{r}
+headers = c(
+  `Connection` = 'keep-alive',
+  `Accept` = 'application/json, text/plain, */*',
+  `x-nba-stats-token` = 'true',
+  `DNT` = '1',
+  `User-Agent` = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36',
+  `x-nba-stats-origin` = 'stats',
+  `Sec-GPC` = '1',
+  `Origin` = 'https://www.nba.com',
+  `Sec-Fetch-Site` = 'same-site',
+  `Sec-Fetch-Mode` = 'cors',
+  `Sec-Fetch-Dest` = 'empty',
+  `Referer` = 'https://www.nba.com/',
+  `Accept-Language` = 'en-US,en;q=0.9',
+  `If-Modified-Since` = 'Wed, 08 Mar 2023 23:24:06 GMT'
+)
+```
+
+### Advanced Stats Data Set
+```{r}
+params = list(
+  `Conference` = '',
+  `DateFrom` = '',
+  `DateTo` = '',
+  `Division` = '',
+  `GameScope` = '',
+  `GameSegment` = '',
+  `LastNGames` = '0',
+  `LeagueID` = '00',
+  `Location` = '',
+  `MeasureType` = 'Advanced',
+  `Month` = '0',
+  `OpponentTeamID` = '0',
+  `Outcome` = '',
+  `PORound` = '0',
+  `PaceAdjust` = 'N',
+  `PerMode` = 'PerGame',
+  `Period` = '0',
+  `PlayerExperience` = '',
+  `PlayerPosition` = '',
+  `PlusMinus` = 'N',
+  `Rank` = 'N',
+  `Season` = '2022-23',
+  `SeasonSegment` = '',
+  `SeasonType` = 'Regular Season',
+  `ShotClockRange` = '',
+  `StarterBench` = '',
+  `TeamID` = '0',
+  `TwoWay` = '0',
+  `VsConference` = '',
+  `VsDivision` = ''
+)
+
+res <- httr::GET(url = 'https://stats.nba.com/stats/leaguedashteamstats', httr::add_headers(.headers=headers), query = params)
+data <- httr::content(res) %>% .[['resultSets']] %>% .[[1]]
+column_names <- data$headers %>% as.character()  
+Team_Adv_Stats <- rbindlist(data$rowSet) %>% setnames(column_names)
+
+rm(res, data, column_names, params)
+```
+
+### Advanced Defensive Stats Data Set
+```{r}
+params = list(
+  `Conference` = '',
+  `DateFrom` = '',
+  `DateTo` = '',
+  `Division` = '',
+  `GameScope` = '',
+  `GameSegment` = '',
+  `LastNGames` = '0',
+  `LeagueID` = '00',
+  `Location` = '',
+  `MeasureType` = 'Four Factors',
+  `Month` = '0',
+  `OpponentTeamID` = '0',
+  `Outcome` = '',
+  `PORound` = '0',
+  `PaceAdjust` = 'N',
+  `PerMode` = 'PerGame',
+  `Period` = '0',
+  `PlayerExperience` = '',
+  `PlayerPosition` = '',
+  `PlusMinus` = 'N',
+  `Rank` = 'N',
+  `Season` = '2022-23',
+  `SeasonSegment` = '',
+  `SeasonType` = 'Regular Season',
+  `ShotClockRange` = '',
+  `StarterBench` = '',
+  `TeamID` = '0',
+  `TwoWay` = '0',
+  `VsConference` = '',
+  `VsDivision` = ''
+)
+
+res <- httr::GET(url = 'https://stats.nba.com/stats/leaguedashteamstats', httr::add_headers(.headers=headers), query = params)
+data <- httr::content(res) %>% .[['resultSets']] %>% .[[1]]
+column_names <- data$headers %>% as.character()  
+Team_Factors_Stats <- rbindlist(data$rowSet) %>% setnames(column_names)
+
+rm(res, data, column_names, params)
+```
+
+### Advanced Four Factors Stats Data Set
+```{r}
+params = list(
+  `Conference` = '',
+  `DateFrom` = '',
+  `DateTo` = '',
+  `Division` = '',
+  `GameScope` = '',
+  `GameSegment` = '',
+  `LastNGames` = '0',
+  `LeagueID` = '00',
+  `Location` = '',
+  `MeasureType` = 'Defense',
+  `Month` = '0',
+  `OpponentTeamID` = '0',
+  `Outcome` = '',
+  `PORound` = '0',
+  `PaceAdjust` = 'N',
+  `PerMode` = 'PerGame',
+  `Period` = '0',
+  `PlayerExperience` = '',
+  `PlayerPosition` = '',
+  `PlusMinus` = 'N',
+  `Rank` = 'N',
+  `Season` = '2022-23',
+  `SeasonSegment` = '',
+  `SeasonType` = 'Regular Season',
+  `ShotClockRange` = '',
+  `StarterBench` = '',
+  `TeamID` = '0',
+  `TwoWay` = '0',
+  `VsConference` = '',
+  `VsDivision` = ''
+)
+
+res <- httr::GET(url = 'https://stats.nba.com/stats/leaguedashteamstats', httr::add_headers(.headers=headers), query = params)
+data <- httr::content(res) %>% .[['resultSets']] %>% .[[1]]
+column_names <- data$headers %>% as.character()  
+Team_Defense_Stats <- rbindlist(data$rowSet) %>% setnames(column_names)
+
+rm(res, data, column_names, params)
+```
+
+### NBASTATR Data Set
+```{r, warning=FALSE, message=FALSE}
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 2)
+
+#Get NBA Teams
+Teams=nba_teams(league="NBA") %>%
+  filter(yearPlayedLast==2022,idLeague==2) %>%
+  select(nameTeam,idTeam,slugTeam)
+
+#Game Data for 2023
+Games2023=game_logs(
+  seasons = 2023,
+  league = "NBA",
+  result_types = "team",
+  season_types = "Regular Season",
+  nest_data = F,
+  assign_to_environment = TRUE,
+  return_message = TRUE
+)
+```
+
+# Cleaning
+
+## Clean Games Dataset
+```{r}
+# Not necessary to use because data is not new, use nbastatr dataset
+
+# Games <- read.csv("Games.csv", header=TRUE)
+# Games = Games %>% select(-c('GAME_STATUS_TEXT', 'TEAM_ID_home', 'TEAM_ID_away'))
+# 
+# Games <- filter(Games, SEASON == 2022) %>% 
+#           merge(Teams, by.x = 'HOME_TEAM_ID', by.y = 'TEAM_ID')
+# Games <- merge(Games, Teams, by.x = "VISITOR_TEAM_ID", by.y = "TEAM_ID")
+# Games <- rename(Games, "TEAM_ABV_home" = "ABBREVIATION.x",
+#                 "TEAM_ABV_away" = "ABBREVIATION.y",
+#                 "TEAM_NAME_home" = "NICKNAME.x",
+#                 "TEAM_NAME_away" = "NICKNAME.y",
+#                 "TEAM_ID_home" = "HOME_TEAM_ID",
+#                 "TEAM_ID_away" = "VISITOR_TEAM_ID")
+```
+
+```{r}
+# Teams dataset not necessary because of nbastatr teams dataset
+
+# Teams2 <- read.csv("Teams.csv", header=TRUE)
+# Teams2 = Teams2 %>% select(c('TEAM_ID', 'ABBREVIATION', 'NICKNAME'))
+```
+
+## Combine Home and Away Teams for Games (nbastatr)
+```{r}
+Games2023 <- Games2023 %>% select(-c("yearSeason", "slugSeason", "slugLeague", "typeSeason", "countDaysNextGameTeam", "slugMatchup", "slugOpponent", "slugTeamWinner", "slugTeamLoser", "outcomeGame", "hasVideo", "urlTeamSeasonLogo"))
+
+Home_Games <- Games2023 %>% group_by(idGame) %>% filter(locationGame == 'H')
+names(Home_Games) <- paste0(names(Home_Games), '_home')
+Away_Games <- Games2023 %>% group_by(idGame) %>% filter(locationGame == 'A')
+names(Away_Games) <- paste0(names(Away_Games), '_away')
+
+Combined_Games <- Home_Games %>% merge(Away_Games, by.x="idGame_home", by.y="idGame_away")
+Combined_Games <- Combined_Games %>% select(-c("dateGame_away", "isWin_away", "plusminusTeam_away", "minutesTeam_away"))
+Combined_Games <- Combined_Games %>% rename("dateGame" = "dateGame_home", 
+                                            "Spread" = "plusminusTeam_home", 
+                                            "minutes" = "minutesTeam_home") %>% mutate(pts_Total = ptsTeam_home + ptsTeam_away,
+                                                                                       oreb_Total = orebTeam_home + orebTeam_away,
+                                                                                       isWin_home = ifelse(isWin_home == TRUE, 1, 0),
+                                                                                       isOT = ifelse(minutes > 240, 1, 0))
+```
+
+### Keep only stat variables from combined data set
+```{r}
+Combined_Games_Stats <- Combined_Games %>% select(-c(numberGameTeamSeason_home, numberGameTeamSeason_away, isB2B_home, isB2BFirst_home, isB2BSecond_home, isB2B_away,
+                                                     isB2BFirst_away, isB2BSecond_away, locationGame_home, locationGame_away, countDaysRestTeam_home, countDaysRestTeam_away,
+                                                     ))
+```
+
+## Player Data Set Cleaning
+```{r, warning=FALSE, message=FALSE}
+Game_IDs_2023 = Home_Games$idGame_home
+# May be better to use an API to pull in recent player data
+Player_log <- read.csv("Games_Details.csv", header=TRUE)
+Player_log <- Player_log %>% select(-c('NICKNAME', 'COMMENT'))
+Player_log <- filter(Player_log, GAME_ID %in% Game_IDs_2023)
+Player_log <- Player_log[nzchar(Player_log$MIN), ] # removes rows where players do not play so averages are not affected
+
+Player_log$MIN <- sapply(strsplit(Player_log$MIN, ":"), function(x) sum(as.numeric(x) * c(1, 1/60)))
+Player_log_grouped <- Player_log %>% group_by(TEAM_ID, TEAM_ABBREVIATION, PLAYER_ID, PLAYER_NAME) %>% summarise(MIN_mean = mean(MIN),
+                                                                                                                FGM = sum(FGM),
+                                                                                                                FGA = sum(FGA),
+                                                                                                                FG_PCT = FGM / FGA,
+                                                                                                                FG3M = sum(FG3M),
+                                                                                                                FG3A = sum(FG3A),
+                                                                                                                FG3_PCT = FG3M / FG3A,
+                                                                                                                FTM = sum(FTM),
+                                                                                                                FTA = sum(FTA),
+                                                                                                                FT_PCT = FTM / FTA,
+                                                                                                                PLUS_MINUS_mean = mean(PLUS_MINUS),
+                                                                                                                OREB_mean = mean(OREB),
+                                                                                                                DREB_mean = mean(DREB),
+                                                                                                                REB_mean = mean(REB),
+                                                                                                                AST_mean = mean(AST),
+                                                                                                                STL_mean = mean(STL),
+                                                                                                                BLK_mean = mean(BLK),
+                                                                                                                TO_mean = mean(TO),
+                                                                                                                PF_mean = mean(PF),
+                                                                                                                PTS_mean = mean(PTS)
+                                                                                                              )
+```
+
+## Cleaning Advanced Stats Data Sets
+```{r}
+Team_Adv_Stats <- select(Team_Adv_Stats, -c(28:46))
+Team_Defense_Stats <- select(Team_Defense_Stats, -c(17:30))
+Team_Factors_Stats <- select(Team_Factors_Stats, -c(16:28))
+```
+
