@@ -298,6 +298,9 @@ Away_Games_Summary2 <- Combined_Games_Stats %>% group_by(nameTeam_away) %>% summ
 Home_Court_Adv <- merge(Home_Games_Summary2, Away_Games_Summary2, by.x = 'nameTeam_home', by.y = 'nameTeam_away') %>% mutate(HCA = Outscoring - Outscored)
 
 Team_Adv_Stats <- merge(Team_Adv_Stats, Home_Court_Adv, by.x = 'TEAM_NAME', by.y = 'nameTeam_home')
+Team_Adv_Stats <- Team_Adv_Stats %>% select(-c(31:33)) %>% rename('Outscoring' = 'Outscoring.x',
+                                                                  'Outscored' = 'Outscored.x',
+                                                                  'HCA' = 'HCA.x')
 ```
 
 
@@ -306,6 +309,8 @@ Team_Adv_Stats <- merge(Team_Adv_Stats, Home_Court_Adv, by.x = 'TEAM_NAME', by.y
 NBA_Master<- merge(Games2023_new, Team_Adv_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
 NBA_Master <- merge(NBA_Master, Team_Defense_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
 NBA_Master <- merge(NBA_Master, Team_Factors_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
+NBA_Master <- merge(NBA_Master, Home_Games_Summary, by.x = 'nameTeam', by.y = 'nameTeam_home')
+NBA_Master <- merge(NBA_Master, Away_Games_Summary, by.x = 'nameTeam', by.y = 'nameTeam_away')
 
 cols_to_delete <- grep("\\.y$", names(NBA_Master))
 NBA_Master <- NBA_Master[, -cols_to_delete]
