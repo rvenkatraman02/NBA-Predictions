@@ -189,6 +189,10 @@ Games2023=game_logs(
   return_message = TRUE
 )
 ```
+### Team Basic Stats
+```{r, warning=FALSE}
+Games2023_new <- Games2023 %>% group_by(nameTeam) %>% summarise_all(mean) %>% select(-c(2:22)) %>% select(-c(9, 13, 25, 26))
+```
 
 # Cleaning
 
@@ -239,7 +243,7 @@ Combined_Games <- Combined_Games %>% rename("dateGame" = "dateGame_home",
 ### Keep only stat variables from combined data set
 ```{r}
 Combined_Games_Stats <- Combined_Games %>% select(-c(numberGameTeamSeason_home, numberGameTeamSeason_away, isB2B_home, isB2BFirst_home, isB2BSecond_home, isB2B_away,
-                                                     isB2BFirst_away, isB2BSecond_away, locationGame_home, locationGame_away, countDaysRestTeam_home, countDaysRestTeam_away,
+                                                     isB2BFirst_away, isB2BSecond_away, locationGame_home, locationGame_away
                                                      ))
 ```
 
@@ -281,5 +285,33 @@ Player_log_grouped <- Player_log %>% group_by(TEAM_ID, TEAM_ABBREVIATION, PLAYER
 Team_Adv_Stats <- select(Team_Adv_Stats, -c(28:46))
 Team_Defense_Stats <- select(Team_Defense_Stats, -c(17:30))
 Team_Factors_Stats <- select(Team_Factors_Stats, -c(16:28))
+```
+
+# New Variable Creation
+```{r}
+Combined_Games_Stats <- Combined_Games_Stats %>% mutate(Fatigue_Diff = countDaysRestTeam_home - countDaysRestTeam_away)
+Home_Games_Summary <- Home_Games %>% group_by(nameTeam_home) %>% mutate(isWin_home = ifelse(isWin_home == TRUE, 1, 0)) %>% summarise(W_Pct_Home = sum(isWin_home) / n())
+Away_Games_Summary <- Away_Games %>% group_by(nameTeam_away) %>% mutate(isWin_home = ifelse(isWin_away == TRUE, 1, 0)) %>% summarise(W_Pct_Away = sum(isWin_away) / n())
+
+Home_Games_Summary2 <- Combined_Games_Stats %>% group_by(nameTeam_home) %>% summarise(Outscoring = mean(Spread))
+Away_Games_Summary2 <- Combined_Games_Stats %>% group_by(nameTeam_away) %>% summarise(Outscored = mean(Spread))
+Home_Court_Adv <- merge(Home_Games_Summary2, Away_Games_Summary2, by.x = 'nameTeam_home', by.y = 'nameTeam_away') %>% mutate(HCA = Outscoring - Outscored)
+
+Team_Adv_Stats <- merge(Team_Adv_Stats, Home_Court_Adv, by.x = 'TEAM_NAME', by.y = 'nameTeam_home')
+```
+
+
+# Create Master Dataset
+```{r}
+NBA_Master<- merge(Games2023_new, Team_Adv_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
+NBA_Master <- merge(NBA_Master, Team_Defense_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
+NBA_Master <- merge(NBA_Master, Team_Factors_Stats, by.x = 'nameTeam', by.y = 'TEAM_NAME')
+
+cols_to_delete <- grep("\\.y$", names(NBA_Master))
+NBA_Master <- NBA_Master[, -cols_to_delete]
+cols_to_delete <- grep("\\.x$", names(NBA_Master))
+NBA_Master <- NBA_Master[, -cols_to_delete]
+
+NBA_Master <- NBA_Master %>% relocate(c('nameTeam', 'TEAM_ID','GP','W', 'L', 'MIN', 'W_PCT', 'W_Pct_Home', 'W_Pct_Away'))
 ```
 
