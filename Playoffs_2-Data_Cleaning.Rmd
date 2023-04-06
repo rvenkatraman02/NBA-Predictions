@@ -1,0 +1,955 @@
+---
+title: "Playoffs_2_NEW"
+author: "Rohan Venkatraman"
+date: "2023-04-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(nbastatR)
+library(zoo)
+library(tidyverse)
+```
+
+# Load NBASTATR Data Sets
+
+## Load Game Logs for Basic Stats
+```{r, warning=FALSE, message=FALSE}
+Sys.setenv("VROOM_CONNECTION_SIZE" = 131072 * 2)
+
+#Game Data for 2023
+Games2023=game_logs(
+  seasons = 2023,
+  league = "NBA",
+  result_types = "team",
+  season_types = "Regular Season",
+  nest_data = F,
+  assign_to_environment = TRUE,
+  return_message = TRUE
+)
+
+Games2023 <- Games2023 %>% select(-c("yearSeason", "slugSeason", "slugLeague", "typeSeason", "countDaysNextGameTeam", "slugMatchup", "slugOpponent", "slugTeamWinner", "slugTeamLoser", "outcomeGame", "hasVideo", "urlTeamSeasonLogo"))
+```
+### Get List of Game IDs
+```{r}
+Game_IDs <- unique(Games2023$idGame)
+```
+
+## Load Four Factor Stats
+```{r}
+# Four_Factors <- box_scores(game_ids=c(Game_IDs),
+#                       box_score_types="Four Factors",
+#                       result_types="team") %>%
+#   unnest(cols = everything())
+```
+
+```{r}
+# Using csvs because box_scores function does not work for me
+
+FourFactors1 <- read.csv("FourFactors_1.csv", header=TRUE)
+FourFactors2 <- read.csv("FourFactors_2.csv", header=TRUE)
+FourFactors3 <- read.csv("FourFactors_3.csv", header=TRUE)
+
+FourFactors <- rbind(FourFactors1, FourFactors2, FourFactors3) %>% select(-c(typeResult, teamName, cityTeam, minExact))
+
+rm(FourFactors1, FourFactors2, FourFactors3)
+```
+
+## Load Miscellaneous Stats
+```{r}
+# Misc <- box_scores(game_ids=c(Game_IDs),
+#                       box_score_types="Misc",
+#                       result_types="team") %>%
+#   unnest(cols = everything())
+```
+
+```{r}
+# Using csvs because box_scores function does not work for me
+
+Misc1 <- read.csv("Misc_1.csv", header=TRUE)
+Misc2 <- read.csv("Misc_2.csv", header=TRUE)
+Misc3 <- read.csv("Misc_3.csv", header=TRUE)
+
+Misc <- rbind(Misc1, Misc2, Misc3) %>% select(-c(typeResult, teamName, cityTeam, minExact, blk, blka))
+
+rm(Misc1, Misc2, Misc3)
+```
+
+## Load Standard Advanced Stats
+```{r}
+# Advanced <- box_scores(game_ids=c(Game_IDs),
+#                       box_score_types="Advances",
+#                       result_types="team") %>%
+#   unnest(cols = everything())
+```
+
+```{r}
+# Using csvs because box_scores function does not work for me
+
+Adv1 <- read.csv("Adv_1.csv", header=TRUE)
+Adv2 <- read.csv("Adv_2.csv", header=TRUE)
+Adv3 <- read.csv("Adv_3.csv", header=TRUE)
+
+Advanced <- rbind(Adv1, Adv2, Adv3) %>% select(-c(typeResult, teamName, cityTeam, minExact, pctUSG))
+
+rm(Adv1, Adv2, Adv3)
+```
+
+## Merge All Advanced Stats Tables Together
+```{r}
+Games2023_2 <- merge(Games2023, FourFactors, by = c('idGame', 'idTeam', 'slugTeam'))
+Games2023_2 <- merge(Games2023_2, Misc, by = c('idGame', 'idTeam', 'slugTeam'))
+Games2023_2 <- merge(Games2023_2, Advanced, by = c('idGame', 'idTeam', 'slugTeam'))
+```
+
+### Split Merged Table by Home/Away
+```{r}
+Games2023_2_H <- Games2023_2 %>% filter(locationGame == 'H')
+Games2023_2_A <- Games2023_2 %>% filter(locationGame == 'A')
+```
+
+### Get Opponent Stats for Home Teams
+```{r}
+Games2023_3 <- merge(Games2023_2_H, Games2023_2_A, by = c('idGame', 'dateGame'))
+
+# Clean out unnecessary columns
+Games2023_3 <- Games2023_3 %>% select(-c(nameTeam.y, isB2B.y, isB2BFirst.y, isB2BSecond.y, locationGame.y, isWin.y, fgmTeam.y, fgaTeam.y, pctFGTeam.y, fg3mTeam.y,
+                                                 fg3aTeam.y, pctFG3Team.y, pctFG3Team.y, pctFG3Team.y, pctFTTeam.y, fg2mTeam.y, fg2aTeam.y, pctFG2Team.y, minutesTeam.y,
+                                                 ftmTeam.y, ftaTeam.y, orebTeam.y, drebTeam.y, trebTeam.y, astTeam.y, stlTeam.y, blkTeam.y, tovTeam.y, pfTeam.y,
+                                                 ptsTeam.y, plusminusTeam.y, pctEFGOpponent.x, pctTOVOpponent.y, pctOREBOpponent.x, rateFTA.y, rateFTAOpponent.y, ptsOffTOV.y,
+                                                 ptsSecondChance.y, ptsFastBreak.y, ptsPaint.y, ptsOffTOVOpponent.x, ptsOffTOVOpponent.y, ptsSecondChanceOpponent.x,
+                                                 ptsSecondChanceOpponent.y, ptsFastBreakOpponent.x, ptsFastBreakOpponent.y, ptsPaintOpponent.x, ptsPaintOpponent.y, pf.y,
+                                                 pfd.y, pctAST.y, pctOREB.y, pctDREB.y, pctTREB.y, pctTOVE.y, pctTOVTeam.y, pctEFG.y, pctTS.y, pctUSGE.y, ortgE.y, ortg.y,
+                                                 ratioASTtoTOV.y, ratioAST.y, paceE.y, pace.y, pacePer40PACE_PER40.y, numberGameTeamSeason.y, pctEFGOpponent.y, pctOREBOpponent.y,
+                                                 idTeam.y, slugTeam.y, paceE.x, paceE.y, netrtgE.x, netrtgE.y, ortgE.x, ortgE.y, drtgE.y,
+                                                 pctTOVOpponent.x, rateFTAOpponent.x, pf.x, drtgE.x, drtg.x))
+
+names(Games2023_3) <- sub("\\.x", "", names(Games2023_3))
+names(Games2023_3) <- sub("\\.y", "_Opp", names(Games2023_3))
+```
+
+### Get Opponent Stats for Away Teams
+```{r}
+Games2023_4 <- merge(Games2023_2_A, Games2023_2_H, by = c('idGame', 'dateGame'))
+
+# Clean out unnecessary columns
+Games2023_4 <- Games2023_4 %>% select(-c(nameTeam.y, isB2B.y, isB2BFirst.y, isB2BSecond.y, locationGame.y, isWin.y, fgmTeam.y, fgaTeam.y, pctFGTeam.y, fg3mTeam.y,
+                                                 fg3aTeam.y, pctFG3Team.y, pctFG3Team.y, pctFG3Team.y, pctFTTeam.y, fg2mTeam.y, fg2aTeam.y, pctFG2Team.y, minutesTeam.y,
+                                                 ftmTeam.y, ftaTeam.y, orebTeam.y, drebTeam.y, trebTeam.y, astTeam.y, stlTeam.y, blkTeam.y, tovTeam.y, pfTeam.y,
+                                                 ptsTeam.y, plusminusTeam.y, pctEFGOpponent.x, pctTOVOpponent.y, pctOREBOpponent.x, rateFTA.y, rateFTAOpponent.y, ptsOffTOV.y,
+                                                 ptsSecondChance.y, ptsFastBreak.y, ptsPaint.y, ptsOffTOVOpponent.x, ptsOffTOVOpponent.y, ptsSecondChanceOpponent.x,
+                                                 ptsSecondChanceOpponent.y, ptsFastBreakOpponent.x, ptsFastBreakOpponent.y, ptsPaintOpponent.x, ptsPaintOpponent.y, pf.y,
+                                                 pfd.y, pctAST.y, pctOREB.y, pctDREB.y, pctTREB.y, pctTOVE.y, pctTOVTeam.y, pctEFG.y, pctTS.y, pctUSGE.y, ortgE.y, ortg.y,
+                                                 ratioASTtoTOV.y, ratioAST.y, paceE.y, pace.y, pacePer40PACE_PER40.y, numberGameTeamSeason.y, pctEFGOpponent.y, pctOREBOpponent.y,
+                                                 idTeam.y, slugTeam.y, paceE.x, paceE.y, netrtgE.x, netrtgE.y, ortgE.x, ortgE.y, drtgE.y,
+                                                 pctTOVOpponent.x, rateFTAOpponent.x, pf.x, drtgE.x, drtg.x))
+
+names(Games2023_4) <- sub("\\.x", "", names(Games2023_4))
+names(Games2023_4) <- sub("\\.y", "_Opp", names(Games2023_4))
+```
+
+### Merge Home and Away Tables back together
+```{r}
+Games2023_Adv <- rbind(Games2023_3, Games2023_4) %>% arrange(idGame)
+```
+
+#### Clean Out Temporary Tables
+```{r}
+rm(Games2023_2, Games2023_2_A, Games2023_2_H, Games2023_3, Games2023_4)
+```
+
+
+# Create Input Table for Predictions
+
+## Create L5 Dataset for Advanced Data
+```{r}
+Last5_Games_Adv <- Games2023_Adv %>% group_by(nameTeam) %>% mutate(L5_fgmTeam = rollapplyr(fgmTeam, 5, mean, fill = NA),
+                                                                  L5_fgaTeam = rollapplyr(fgaTeam, 5, mean, fill = NA),
+                                                                  L5_pctFGTeam = rollapplyr(pctFGTeam, 5, mean, fill = NA),
+                                                                  L5_fg3mTeam = rollapplyr(fg3mTeam, 5, mean, fill = NA),
+                                                                  L5_fg3aTeam = rollapplyr(fg3aTeam, 5, mean, fill = NA),
+                                                                  L5_pctFG3Team = rollapplyr(pctFG3Team, 5, mean, fill = NA),
+                                                                  L5_fg2mTeam = rollapplyr(fg2mTeam, 5, mean, fill = NA),
+                                                                  L5_fg2aTeam = rollapplyr(fg2aTeam, 5, mean, fill = NA),
+                                                                  L5_pctFG2Team = rollapplyr(pctFG2Team, 5, mean, fill = NA),
+                                                                  L5_minutesTeam = rollapplyr(minutesTeam, 5, mean, fill = NA),
+                                                                  L5_ftmTeam = rollapplyr(ftmTeam, 5, mean, fill = NA),
+                                                                  L5_ftaTeam = rollapplyr(ftaTeam, 5, mean, fill = NA),
+                                                                  L5_pctFTTeam = rollapplyr(pctFTTeam, 5, mean, fill = NA),
+                                                                  L5_orebTeam = rollapplyr(orebTeam, 5, mean, fill = NA),
+                                                                  L5_drebTeam = rollapplyr(drebTeam, 5, mean, fill = NA),
+                                                                  L5_trebTeam = rollapplyr(trebTeam, 5, mean, fill = NA),
+                                                                  L5_astTeam = rollapplyr(astTeam, 5, mean, fill = NA),
+                                                                  L5_stlTeam = rollapplyr(stlTeam, 5, mean, fill = NA),
+                                                                  L5_blkTeam = rollapplyr(blkTeam, 5, mean, fill = NA),
+                                                                  L5_tovTeam = rollapplyr(tovTeam, 5, mean, fill = NA),
+                                                                  L5_pfTeam = rollapplyr(pfTeam, 5, mean, fill = NA),
+                                                                  L5_rateFTA = rollapplyr(rateFTA, 5, mean, fill = NA),
+                                                                  L5_ptsOffTOV = rollapplyr(ptsOffTOV, 5, mean, fill = NA),
+                                                                  L5_ptsSecondChance = rollapplyr(ptsSecondChance, 5, mean, fill = NA),
+                                                                  L5_ptsFastBreak = rollapplyr(ptsFastBreak, 5, mean, fill = NA),
+                                                                  L5_ptsPaint = rollapplyr(ptsPaint, 5, mean, fill = NA),
+                                                                  L5_pfd = rollapplyr(pfd, 5, mean, fill = NA),
+                                                                  L5_pctTS = rollapplyr(pctTS, 5, mean, fill = NA),
+                                                                  L5_pctEFG = rollapplyr(pctEFG, 5, mean, fill = NA),
+                                                                  L5_pctUSGE = rollapplyr(pctUSGE, 5, mean, fill = NA),
+                                                                  L5_ortg = rollapplyr(ortg, 5, mean, fill = NA),
+                                                                  L5_netrtg = rollapplyr(netrtg, 5, mean, fill = NA),
+                                                                  L5_pace = rollapplyr(pace, 5, mean, fill = NA),
+                                                                  L5_possessions = rollapplyr(possessions, 5, mean, fill = NA),
+                                                                  L5_ratioPIE = rollapplyr(ratioPIE, 5, mean, fill = NA),
+                                                                  L5_drtg_Opp = rollapplyr(drtg_Opp, 5, mean, fill = NA),
+                                                                  L5_netrtg_Opp = rollapplyr(netrtg_Opp, 5, mean, fill = NA),
+                                                                  L5_possessions_Opp = rollapplyr(possessions_Opp, 5, mean, fill = NA),
+                                                                  L5_ratioPIE_Opp = rollapplyr(ratioPIE_Opp, 5, mean, fill = NA)
+                                                           ) %>% ungroup()
+
+Last5_Games_Adv <- Last5_Games_Adv %>% group_by(nameTeam) %>% slice_max(dateGame) %>% ungroup() %>% select(-c(12:63))
+```
+
+
+## Create Combined Games Table
+```{r}
+Home_Games_Adv <- Games2023_Adv %>% group_by(idGame) %>% filter(locationGame == 'H')
+names(Home_Games_Adv) <- paste0(names(Home_Games_Adv), '_home')
+Away_Games_Adv <- Games2023_Adv %>% group_by(idGame) %>% filter(locationGame == 'A')
+names(Away_Games_Adv) <- paste0(names(Away_Games_Adv), '_away')
+
+# Merge the tables so that home and away stats show up on one row instead of two
+
+Combined_Games_Adv <- Home_Games_Adv %>% merge(Away_Games_Adv, by.x="idGame_home", by.y="idGame_away")
+Combined_Games_Adv <- Combined_Games_Adv %>% select(-c("dateGame_away", "isWin_away", "plusminusTeam_away", "minutesTeam_away"))
+Combined_Games_Adv <- Combined_Games_Adv %>% rename("dateGame" = "dateGame_home", 
+                                            "Spread" = "plusminusTeam_home", 
+                                            "minutes" = "minutesTeam_home") %>% mutate(pts_Total = ptsTeam_home + ptsTeam_away,
+                                                                                       oreb_Total = orebTeam_home + orebTeam_away,
+                                                                                       isWin_home = ifelse(isWin_home == TRUE, 1, 0),
+                                                                                       isOT = ifelse(minutes > 240, 1, 0))
+```
+
+```{r}
+# Create new column for the matchups
+Combined_Games_Adv <- Combined_Games_Adv %>%
+  # create new column with team names concatenated in alphabetical order
+  mutate(matchup = if_else(nameTeam_home < nameTeam_away,
+                           paste0(nameTeam_home, " | ", nameTeam_away),
+                           paste0(nameTeam_away, " | ", nameTeam_home))) %>%
+  group_by(matchup) %>%
+  mutate(matchup_id = row_number(),
+         total_matchups = cumsum(matchup_id == 1) + (matchup_id - 1))
+
+Matchups_Adv <- Combined_Games_Adv %>% group_by(matchup) %>% summarise(Total_Matchups = max(total_matchups))
+```
+
+#### Clean Out Temporary Tables
+```{r}
+rm(Home_Games_Adv, Away_Games_Adv)
+```
+
+
+## Create Previous Matchups Table for Advanced Data
+```{r, warning=FALSE, message=FALSE}
+Matchup_History_Adv <- Combined_Games_Adv %>% select(-c(1:5, 11:12))
+
+# Sum each stat by matchup
+Matchup_History_Adv <- Matchup_History_Adv %>% 
+  group_by(matchup, nameTeam_home, nameTeam_away) %>% 
+  summarise(across(where(is.numeric), sum, .names = "Tot_{.col}")) %>% 
+  ungroup()
+
+# Create lags for each matchup to account for when matchup is home vs away
+Matchup_History_Adv <- Matchup_History_Adv %>% arrange(matchup) %>% group_by(matchup) %>% mutate(across(starts_with("Tot_"), ~lag(.), .names = "lagged_{.col}"))
+
+# Sum each stat to disregard home/away status
+Matchup_History_Adv <- Matchup_History_Adv %>% group_by(matchup) %>% mutate(OREB_home = Tot_orebTeam_home + lagged_Tot_orebTeam_away,
+                                                                            OREB_away = Tot_orebTeam_away + lagged_Tot_orebTeam_home,
+                                                                            DREB_home = Tot_drebTeam_home + lagged_Tot_drebTeam_away,
+                                                                            DREB_away = Tot_drebTeam_away + lagged_Tot_drebTeam_home,
+                                                                            AST_home = Tot_astTeam_home + lagged_Tot_astTeam_away,
+                                                                            AST_away = Tot_astTeam_away + lagged_Tot_astTeam_home,
+                                                                            STL_home = Tot_stlTeam_home + lagged_Tot_stlTeam_away,
+                                                                            STL_away = Tot_stlTeam_away + lagged_Tot_stlTeam_home,
+                                                                            BLK_home = Tot_blkTeam_home + lagged_Tot_blkTeam_away,
+                                                                            BLK_away = Tot_blkTeam_away + lagged_Tot_blkTeam_home,
+                                                                            TOV_home = Tot_tovTeam_home + lagged_Tot_tovTeam_away,
+                                                                            TOV_away = Tot_tovTeam_away + lagged_Tot_tovTeam_home,
+                                                                            PF_home = Tot_pfTeam_home + lagged_Tot_pfTeam_away,
+                                                                            PF_away = Tot_pfTeam_away + lagged_Tot_pfTeam_home,
+                                                                            FGM_home = Tot_fgmTeam_home + lagged_Tot_fgmTeam_away,
+                                                                            FGM_away = Tot_fgmTeam_away + lagged_Tot_fgmTeam_home,
+                                                                            FGA_home = Tot_fgaTeam_home + lagged_Tot_fgaTeam_away,
+                                                                            FGA_away = Tot_fgaTeam_away + lagged_Tot_fgaTeam_home,
+                                                                            FGPct_home = Tot_pctFGTeam_home + lagged_Tot_pctFGTeam_away,
+                                                                            FGPct_away = Tot_pctFGTeam_away + lagged_Tot_pctFGTeam_home,
+                                                                            FG3M_home = Tot_fg3mTeam_home + lagged_Tot_fg3mTeam_away,
+                                                                            FG3M_away = Tot_fg3mTeam_away + lagged_Tot_fg3mTeam_home,
+                                                                            FG3A_home = Tot_fg3aTeam_home + lagged_Tot_fg3aTeam_away,
+                                                                            FG3A_away = Tot_fg3aTeam_away + lagged_Tot_fg3aTeam_home,
+                                                                            FG3Pct_home = Tot_pctFG3Team_home + lagged_Tot_pctFG3Team_away,
+                                                                            FG3Pct_away = Tot_pctFG3Team_away + lagged_Tot_pctFG3Team_home,
+                                                                            FTM_home = Tot_ftmTeam_home + lagged_Tot_ftmTeam_away,
+                                                                            FTM_away = Tot_ftmTeam_away + lagged_Tot_ftmTeam_home,
+                                                                            FTA_home = Tot_ftaTeam_home + lagged_Tot_ftaTeam_away,
+                                                                            FTA_away = Tot_ftaTeam_away + lagged_Tot_ftaTeam_home,
+                                                                            FTPct_home = Tot_pctFTTeam_home + lagged_Tot_pctFTTeam_away,
+                                                                            FTPct_away = Tot_pctFTTeam_away + lagged_Tot_pctFTTeam_home,
+                                                                            FG2M_home = Tot_fg2mTeam_home + lagged_Tot_fg2mTeam_away,
+                                                                            FG2M_away = Tot_fg2mTeam_away + lagged_Tot_fg2mTeam_home,
+                                                                            FG2A_home = Tot_fg2aTeam_home + lagged_Tot_fg2aTeam_away,
+                                                                            FG2A_away = Tot_fg2aTeam_away + lagged_Tot_fg2aTeam_home,
+                                                                            FG2Pct_home = Tot_pctFG2Team_home + lagged_Tot_pctFG2Team_away,
+                                                                            FG2Pct_away = Tot_pctFG2Team_away + lagged_Tot_pctFG2Team_home,
+                                                                            FTARate_home = Tot_rateFTA_home + lagged_Tot_rateFTA_away,
+                                                                            FTARate_away = Tot_rateFTA_away + lagged_Tot_rateFTA_home,
+                                                                            PtsTOV_home = Tot_ptsOffTOV_home + lagged_Tot_ptsOffTOV_away,
+                                                                            PtsTOV_away = Tot_ptsOffTOV_away + lagged_Tot_ptsOffTOV_home,
+                                                                            Pts2Chance_home = Tot_ptsSecondChance_home + lagged_Tot_ptsSecondChance_away,
+                                                                            Pts2Chance_away = Tot_ptsSecondChance_away + lagged_Tot_ptsSecondChance_home,
+                                                                            PtsFB_home = Tot_ptsFastBreak_home + lagged_Tot_ptsFastBreak_away,
+                                                                            PtsFB_away = Tot_ptsFastBreak_away + lagged_Tot_ptsFastBreak_home,
+                                                                            PtsPnt_home = Tot_ptsPaint_home + lagged_Tot_ptsPaint_away,
+                                                                            PtsPnt_away = Tot_ptsPaint_away + lagged_Tot_ptsPaint_home,
+                                                                            Pfd_home = Tot_pfd_home + lagged_Tot_pfd_away,
+                                                                            Pfd_away = Tot_pfd_away + lagged_Tot_pfd_home,
+                                                                            EFG_home = Tot_pctEFG_home + lagged_Tot_pctEFG_away,
+                                                                            EFG_away = Tot_pctEFG_away + lagged_Tot_pctEFG_home,
+                                                                            TS_home = Tot_pctTS_home + lagged_Tot_pctTS_away,
+                                                                            TS_away = Tot_pctTS_away + lagged_Tot_pctTS_home,
+                                                                            USGE_home = Tot_pctUSGE_home + lagged_Tot_pctUSGE_away,
+                                                                            USGE_away = Tot_pctUSGE_away + lagged_Tot_pctUSGE_home,
+                                                                            ORtg_home = Tot_ortg_home + lagged_Tot_ortg_away,
+                                                                            ORtg_away = Tot_ortg_away + lagged_Tot_ortg_home,
+                                                                            NetRtg_home = Tot_netrtg_home + lagged_Tot_netrtg_away,
+                                                                            NetRtg_away = Tot_netrtg_away + lagged_Tot_netrtg_home,
+                                                                            Pace_home = Tot_pace_home + lagged_Tot_pace_away,
+                                                                            Pace_away = Tot_pace_away + lagged_Tot_pace_home,
+                                                                            NetRtg_Opp_home = Tot_netrtg_Opp_home + lagged_Tot_netrtg_Opp_away,
+                                                                            NetRtg_Opp_away = Tot_netrtg_Opp_away + lagged_Tot_netrtg_Opp_home,
+                                                                            RatioPIE_home = Tot_ratioPIE_home + lagged_Tot_ratioPIE_away,
+                                                                            RatioPIE_away = Tot_ratioPIE_away + lagged_Tot_ratioPIE_home,
+                                                                            RatioPIE_Opp_home = Tot_ratioPIE_Opp_home + lagged_Tot_ratioPIE_Opp_away,
+                                                                            RatioPIE_Opp_away = Tot_ratioPIE_Opp_away + lagged_Tot_ratioPIE_Opp_home,
+                                                                            hadHomeAway = n())
+```
+
+### Delete Rows with NA Values Caused by Lags
+```{r}
+# Delete rows where 'hadHomeAway' == 2 and 'lagged_away_reb' = NA and 'lagged_home_reb' = NA
+Matchup_History_Adv <- Matchup_History_Adv[!(Matchup_History_Adv$hadHomeAway == 2 & 
+                                        is.na(Matchup_History_Adv$lagged_Tot_orebTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_orebTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_drebTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_drebTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_astTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_astTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_stlTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_stlTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_blkTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_blkTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_tovTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_tovTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pfTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pfTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fgmTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fgmTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fgaTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fgaTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFGTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFGTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg3mTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg3mTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg3aTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg3aTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFG3Team_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFG3Team_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ftmTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ftmTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ftaTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ftaTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFTTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFTTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg2mTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg2mTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg2aTeam_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_fg2aTeam_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFG2Team_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctFG2Team_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_rateFTA_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_rateFTA_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsOffTOV_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsOffTOV_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsSecondChance_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsSecondChance_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsFastBreak_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsFastBreak_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsPaint_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ptsPaint_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pfd_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pfd_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctEFG_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctEFG_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctTS_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctTS_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctUSGE_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pctUSGE_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ortg_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ortg_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_netrtg_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_netrtg_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pace_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_pace_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_netrtg_Opp_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_netrtg_Opp_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_home) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_Opp_away) &
+                                        is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_Opp_home)
+                                        ), ]
+```
+
+### Update the Statistics with the Correct Values
+```{r}
+Matchup_History_Adv$OREB_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_orebTeam_home),
+                                     Matchup_History_Adv$Tot_orebTeam_home,
+                                     Matchup_History_Adv$OREB_home)
+
+Matchup_History_Adv$OREB_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_orebTeam_away),
+                                     Matchup_History_Adv$Tot_orebTeam_away,
+                                     Matchup_History_Adv$OREB_away)
+
+Matchup_History_Adv$DREB_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_drebTeam_home),
+                                     Matchup_History_Adv$Tot_drebTeam_home,
+                                     Matchup_History_Adv$DREB_home)
+
+Matchup_History_Adv$DREB_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_drebTeam_away),
+                                     Matchup_History_Adv$Tot_drebTeam_away,
+                                     Matchup_History_Adv$DREB_away)
+
+Matchup_History_Adv$AST_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_astTeam_home),
+                                     Matchup_History_Adv$Tot_astTeam_home,
+                                     Matchup_History_Adv$AST_home)
+
+Matchup_History_Adv$AST_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_astTeam_away),
+                                     Matchup_History_Adv$Tot_astTeam_away,
+                                     Matchup_History_Adv$AST_away)
+
+Matchup_History_Adv$STL_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_stlTeam_home),
+                                     Matchup_History_Adv$Tot_stlTeam_home,
+                                     Matchup_History_Adv$STL_home)
+
+Matchup_History_Adv$STL_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_stlTeam_away),
+                                     Matchup_History_Adv$Tot_stlTeam_away,
+                                     Matchup_History_Adv$STL_away)
+
+Matchup_History_Adv$BLK_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_blkTeam_home) ,
+                                     Matchup_History_Adv$Tot_blkTeam_home,
+                                     Matchup_History_Adv$BLK_home)
+
+Matchup_History_Adv$BLK_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_blkTeam_away),
+                                     Matchup_History_Adv$Tot_blkTeam_away,
+                                     Matchup_History_Adv$BLK_away)
+
+Matchup_History_Adv$TOV_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_tovTeam_home) ,
+                                     Matchup_History_Adv$Tot_tovTeam_home,
+                                     Matchup_History_Adv$TOV_home)
+
+Matchup_History_Adv$TOV_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_tovTeam_away) ,
+                                     Matchup_History_Adv$Tot_tovTeam_away,
+                                     Matchup_History_Adv$TOV_away)
+
+Matchup_History_Adv$PF_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pfTeam_home) ,
+                                     Matchup_History_Adv$Tot_pfTeam_home,
+                                     Matchup_History_Adv$PF_home)
+
+Matchup_History_Adv$PF_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pfTeam_away),
+                                     Matchup_History_Adv$Tot_pfTeam_away,
+                                     Matchup_History_Adv$PF_away)
+
+Matchup_History_Adv$FGM_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fgmTeam_home),
+                                       Matchup_History_Adv$Tot_fgmTeam_home,
+                                       Matchup_History_Adv$FGM_home)
+
+Matchup_History_Adv$FGM_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fgmTeam_away),
+                                       Matchup_History_Adv$Tot_fgmTeam_away,
+                                       Matchup_History_Adv$FGM_away)
+
+Matchup_History_Adv$FGA_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fgaTeam_home),
+                                       Matchup_History_Adv$Tot_fgaTeam_home,
+                                       Matchup_History_Adv$FGA_home)
+
+Matchup_History_Adv$FGA_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fgaTeam_away),
+                                       Matchup_History_Adv$Tot_fgaTeam_away,
+                                       Matchup_History_Adv$FGA_away)
+
+Matchup_History_Adv$FGPct_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFGTeam_home) ,
+                                       Matchup_History_Adv$Tot_pctFGTeam_home,
+                                       Matchup_History_Adv$FGPct_home)
+
+Matchup_History_Adv$FG3M_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg3mTeam_home) ,
+                                       Matchup_History_Adv$Tot_fg3mTeam_home,
+                                       Matchup_History_Adv$FG3M_home)
+
+Matchup_History_Adv$FG3M_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg3mTeam_away) ,
+                                       Matchup_History_Adv$Tot_fg3mTeam_away,
+                                       Matchup_History_Adv$FG3M_away)
+
+Matchup_History_Adv$FG3A_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg3aTeam_home) ,
+                                       Matchup_History_Adv$Tot_fg3aTeam_home,
+                                       Matchup_History_Adv$FG3A_home)
+
+Matchup_History_Adv$FG3A_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg3aTeam_away) ,
+                                       Matchup_History_Adv$Tot_fg3aTeam_away,
+                                       Matchup_History_Adv$FG3A_away)
+
+Matchup_History_Adv$FG3Pct_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFG3Team_home) ,
+                                       Matchup_History_Adv$Tot_pctFG3Team_home,
+                                       Matchup_History_Adv$FG3Pct_home)
+
+Matchup_History_Adv$FG3Pct_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFG3Team_away) ,
+                                       Matchup_History_Adv$Tot_pctFG3Team_away,
+                                       Matchup_History_Adv$FG3Pct_away)
+
+Matchup_History_Adv$FTA_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ftaTeam_home) ,
+                                       Matchup_History_Adv$Tot_ftaTeam_home,
+                                       Matchup_History_Adv$FTA_home)
+
+Matchup_History_Adv$FTA_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ftaTeam_away) ,
+                                       Matchup_History_Adv$Tot_ftaTeam_away,
+                                       Matchup_History_Adv$FTA_away)
+
+Matchup_History_Adv$FTM_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ftmTeam_home) ,
+                                       Matchup_History_Adv$Tot_ftmTeam_home,
+                                       Matchup_History_Adv$FTM_home)
+
+Matchup_History_Adv$FTM_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ftmTeam_away) ,
+                                       Matchup_History_Adv$Tot_ftmTeam_away,
+                                       Matchup_History_Adv$FTM_away)
+
+Matchup_History_Adv$FTPct_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFTTeam_home) ,
+                                       Matchup_History_Adv$Tot_pctFTTeam_home,
+                                       Matchup_History_Adv$FTPct_home)
+
+Matchup_History_Adv$FTPct_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFTTeam_away) ,
+                                       Matchup_History_Adv$Tot_pctFTTeam_away,
+                                       Matchup_History_Adv$FTPct_away)
+
+Matchup_History_Adv$FG2M_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg2mTeam_home) ,
+                                       Matchup_History_Adv$Tot_fg2mTeam_home,
+                                       Matchup_History_Adv$FG2M_home)
+
+Matchup_History_Adv$FG2M_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg2mTeam_away) ,
+                                       Matchup_History_Adv$Tot_fg2mTeam_away,
+                                       Matchup_History_Adv$FG2M_away)
+
+Matchup_History_Adv$FG2A_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg2aTeam_home) ,
+                                       Matchup_History_Adv$Tot_fg2aTeam_home,
+                                       Matchup_History_Adv$FG2A_home)
+
+Matchup_History_Adv$FG2A_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_fg2aTeam_away) ,
+                                       Matchup_History_Adv$Tot_fg2aTeam_away,
+                                       Matchup_History_Adv$FG2A_away)
+
+Matchup_History_Adv$FG2Pct_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFG2Team_home) ,
+                                       Matchup_History_Adv$Tot_pctFG2Team_home,
+                                       Matchup_History_Adv$FG2Pct_home)
+
+Matchup_History_Adv$FG2Pct_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctFG2Team_away) ,
+                                       Matchup_History_Adv$Tot_pctFG2Team_away,
+                                       Matchup_History_Adv$FG2Pct_away)
+
+Matchup_History_Adv$FTARate_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_rateFTA_home) ,
+                                       Matchup_History_Adv$Tot_rateFTA_home,
+                                       Matchup_History_Adv$FTARate_home)
+
+Matchup_History_Adv$FTARate_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_rateFTA_away) ,
+                                       Matchup_History_Adv$Tot_rateFTA_away,
+                                       Matchup_History_Adv$FTARate_away)
+
+Matchup_History_Adv$PtsTOV_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsOffTOV_home),
+                                          Matchup_History_Adv$Tot_ptsOffTOV_home,
+                                          Matchup_History_Adv$PtsTOV_home)
+
+Matchup_History_Adv$PtsTOV_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsOffTOV_away),
+                                          Matchup_History_Adv$Tot_ptsOffTOV_away,
+                                          Matchup_History_Adv$PtsTOV_away)
+
+Matchup_History_Adv$Pts2Chance_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsSecondChance_home) ,
+                                          Matchup_History_Adv$Tot_ptsSecondChance_home,
+                                          Matchup_History_Adv$Pts2Chance_home)
+
+Matchup_History_Adv$Pts2Chance_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsSecondChance_away) ,
+                                          Matchup_History_Adv$Tot_ptsSecondChance_away,
+                                          Matchup_History_Adv$Pts2Chance_away)
+
+Matchup_History_Adv$PtsFB_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsFastBreak_home) ,
+                                          Matchup_History_Adv$Tot_ptsFastBreak_home,
+                                          Matchup_History_Adv$PtsFB_home)
+
+Matchup_History_Adv$PtsFB_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsFastBreak_away) ,
+                                          Matchup_History_Adv$Tot_ptsFastBreak_away,
+                                          Matchup_History_Adv$PtsFB_away)
+
+Matchup_History_Adv$PtsPnt_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsPaint_home) ,
+                                          Matchup_History_Adv$Tot_ptsPaint_home,
+                                          Matchup_History_Adv$PtsPnt_home)
+
+Matchup_History_Adv$PtsPnt_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ptsPaint_away) ,
+                                          Matchup_History_Adv$Tot_ptsPaint_away,
+                                          Matchup_History_Adv$PtsPnt_away)
+
+Matchup_History_Adv$Pfd_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pfd_home) ,
+                                          Matchup_History_Adv$Tot_pfd_home,
+                                          Matchup_History_Adv$Pfd_home)
+
+Matchup_History_Adv$Pfd_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pfd_away) ,
+                                          Matchup_History_Adv$Tot_pfd_away,
+                                          Matchup_History_Adv$Pfd_away)
+
+Matchup_History_Adv$EFG_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctEFG_home) ,
+                                          Matchup_History_Adv$Tot_pctEFG_home,
+                                          Matchup_History_Adv$EFG_home)
+
+Matchup_History_Adv$EFG_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctEFG_away) ,
+                                          Matchup_History_Adv$Tot_pctEFG_away,
+                                          Matchup_History_Adv$EFG_away)
+
+Matchup_History_Adv$TS_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctTS_home) ,
+                                          Matchup_History_Adv$Tot_pctTS_home,
+                                          Matchup_History_Adv$TS_home)
+
+Matchup_History_Adv$TS_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctTS_away) ,
+                                          Matchup_History_Adv$Tot_pctTS_away,
+                                          Matchup_History_Adv$TS_away)
+
+Matchup_History_Adv$USGE_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctUSGE_home) ,
+                                          Matchup_History_Adv$Tot_pctUSGE_home,
+                                          Matchup_History_Adv$USGE_home)
+
+Matchup_History_Adv$USGE_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pctUSGE_away) ,
+                                          Matchup_History_Adv$Tot_pctUSGE_away,
+                                          Matchup_History_Adv$USGE_away)
+
+Matchup_History_Adv$ORtg_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ortg_home) ,
+                                          Matchup_History_Adv$Tot_ortg_home,
+                                          Matchup_History_Adv$ORtg_home)
+
+Matchup_History_Adv$ORtg_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ortg_away) ,
+                                          Matchup_History_Adv$Tot_ortg_away,
+                                          Matchup_History_Adv$ORtg_away)
+
+Matchup_History_Adv$NetRtg_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_netrtg_home) ,
+                                          Matchup_History_Adv$Tot_netrtg_home,
+                                          Matchup_History_Adv$NetRtg_home)
+
+Matchup_History_Adv$NetRtg_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_netrtg_away) ,
+                                          Matchup_History_Adv$Tot_netrtg_away,
+                                          Matchup_History_Adv$NetRtg_away)
+
+Matchup_History_Adv$Pace_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pace_home) ,
+                                          Matchup_History_Adv$Tot_pace_home,
+                                          Matchup_History_Adv$Pace_home)
+
+Matchup_History_Adv$Pace_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_pace_away) ,
+                                          Matchup_History_Adv$Tot_pace_away,
+                                          Matchup_History_Adv$Pace_away)
+
+Matchup_History_Adv$NetRtg_Opp_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_netrtg_Opp_home) ,
+                                          Matchup_History_Adv$Tot_netrtg_Opp_home,
+                                          Matchup_History_Adv$NetRtg_Opp_home)
+
+Matchup_History_Adv$NetRtg_Opp_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_netrtg_Opp_away) ,
+                                          Matchup_History_Adv$Tot_netrtg_Opp_away,
+                                          Matchup_History_Adv$NetRtg_Opp_away)
+
+Matchup_History_Adv$RatioPIE_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_home) ,
+                                          Matchup_History_Adv$Tot_ratioPIE_home,
+                                          Matchup_History_Adv$RatioPIE_home)
+
+Matchup_History_Adv$RatioPIE_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_away) ,
+                                          Matchup_History_Adv$Tot_ratioPIE_away,
+                                          Matchup_History_Adv$RatioPIE_away)
+
+Matchup_History_Adv$RatioPIE_Opp_home <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_Opp_home) ,
+                                          Matchup_History_Adv$Tot_ratioPIE_Opp_home,
+                                          Matchup_History_Adv$RatioPIE_Opp_home)
+
+Matchup_History_Adv$RatioPIE_Opp_away <- ifelse(is.na(Matchup_History_Adv$lagged_Tot_ratioPIE_Opp_away) ,
+                                          Matchup_History_Adv$Tot_ratioPIE_Opp_away,
+                                          Matchup_History_Adv$RatioPIE_Opp_away)
+
+Matchup_History_Adv <- Matchup_History_Adv %>% select(-matches("(lagged|Tot)"))
+Matchup_History_Adv <- Matchup_History_Adv %>% select(-c("hadHomeAway"))
+```
+
+### Merge to Include Total Matchups Column
+```{r}
+Matchup_History_Adv <- merge(Matchup_History_Adv, Matchups_Adv, by.x = 'matchup', by.y = 'matchup')
+```
+
+### Create Averages for Each Matchup
+```{r}
+Matchup_History_Adv2 <- Matchup_History_Adv %>% group_by(matchup) %>% mutate_at(vars(-Total_Matchups), ~ ifelse(is.numeric(.), . / Total_Matchups, .))
+rm(Matchup_History_Adv, Matchups_Adv)
+```
+
+### Split Matchup History by Home/Away to Label
+```{r}
+Home_Matchup_History_Adv <- Matchup_History_Adv2 %>% select(matchup, Total_Matchups, contains("home")) %>% rename_with(~ gsub("_home", "", .), contains("_home"))
+Away_Matchup_History_Adv <- Matchup_History_Adv2 %>% select(matchup, Total_Matchups, contains("away")) %>% rename_with(~ gsub("_away", "", .), contains("_away"))
+```
+
+### Join Home and Away Matchup History
+```{r}
+Combined_Matchup_History_Adv <- rbind(Home_Matchup_History_Adv, Away_Matchup_History_Adv)
+Combined_Matchup_History_Adv <- Combined_Matchup_History_Adv %>% arrange(matchup)
+
+rm(Home_Matchup_History_Adv, Away_Matchup_History_Adv)
+```
+
+## Provide Weights by Combining L5 Games & Matchup History
+```{r, warning=FALSE, message=FALSE}
+Weighted_Game_Averages_Adv <- merge(Combined_Matchup_History_Adv, Last5_Games_Adv, by.x = 'nameTeam', by.y = 'nameTeam')
+Weighted_Game_Averages_Adv <- Weighted_Game_Averages_Adv %>% select(-c(dateGame, idGame, numberGameTeamSeason, idTeam, isB2B, slugTeam))
+
+# Create weight variable
+Weighted_Game_Averages_Adv$Weight <- Weighted_Game_Averages_Adv$Total_Matchups + 5
+
+# Create Weighted Statistics
+Weighted_Game_Averages_Adv <- Weighted_Game_Averages_Adv %>% group_by(matchup, nameTeam) %>% summarise(Matchups = Total_Matchups,
+                                                                                                Weighted_OREB = ((OREB*Total_Matchups) + (L5_orebTeam * 5)) / Weight,
+                                                                                                Weighted_DREB = ((DREB*Total_Matchups) + (L5_drebTeam * 5)) / Weight,
+                                                                                                Weighted_AST = ((AST*Total_Matchups) + (L5_astTeam * 5)) / Weight,
+                                                                                                Weighted_STL = ((STL*Total_Matchups) + (L5_stlTeam * 5)) / Weight,
+                                                                                                Weighted_BLK = ((BLK*Total_Matchups) + (L5_blkTeam * 5)) / Weight, 
+                                                                                                Weighted_TOV = ((TOV*Total_Matchups) + (L5_tovTeam * 5)) / Weight,
+                                                                                                Weighted_PF = ((PF*Total_Matchups) + (L5_pfTeam * 5)) / Weight,
+                                                                                                Weighted_FGM = ((FGM*Total_Matchups) + (L5_fgmTeam * 5)) / Weight,
+                                                                                                Weighted_FGA = ((FGA*Total_Matchups) + (L5_fgaTeam * 5)) / Weight,
+                                                                                                Weighted_FGPct = ((FGPct*Total_Matchups) + (L5_pctFGTeam * 5)) / Weight,
+                                                                                                Weighted_FG2M = ((FG2M*Total_Matchups) + (L5_fg2mTeam * 5)) / Weight,
+                                                                                                Weighted_FG2A = ((FG2A*Total_Matchups) + (L5_fg2aTeam * 5)) / Weight,
+                                                                                                Weighted_FG2Pct = ((FG2Pct*Total_Matchups) + (L5_pctFG2Team * 5)) / Weight,
+                                                                                                Weighted_FG3M = ((FG3M*Total_Matchups) + (L5_fg3mTeam * 5)) / Weight,
+                                                                                                Weighted_FG3A = ((FG3A*Total_Matchups) + (L5_fg3aTeam * 5)) / Weight,
+                                                                                                Weighted_FG3Pct = ((FG3Pct*Total_Matchups) + (L5_pctFG3Team * 5)) / Weight,
+                                                                                                Weighted_FTM = ((FTM*Total_Matchups) + (L5_ftmTeam * 5)) / Weight,
+                                                                                                Weighted_FTA = ((FTA*Total_Matchups) + (L5_ftaTeam * 5)) / Weight,
+                                                                                                Weighted_FTPct = ((FTPct*Total_Matchups) + (L5_pctFTTeam * 5)) / Weight,
+                                                                                                Weighted_FTARate = ((FTARate*Total_Matchups) + (L5_rateFTA * 5)) / Weight,
+                                                                                                Weighted_PtsTOV = ((PtsTOV*Total_Matchups) + (L5_ptsOffTOV * 5)) / Weight,
+                                                                                            Weighted_Pts2Chance = ((Pts2Chance*Total_Matchups) + (L5_ptsSecondChance * 5)) / Weight,
+                                                                                                Weighted_PtsFB = ((PtsFB*Total_Matchups) + (L5_ptsFastBreak * 5)) / Weight,
+                                                                                                Weighted_PtsPnt = ((PtsPnt*Total_Matchups) + (L5_ptsPaint * 5)) / Weight,
+                                                                                                Weighted_Pfd = ((Pfd*Total_Matchups) + (L5_pfd * 5)) / Weight,
+                                                                                                Weighted_EFG = ((EFG*Total_Matchups) + (L5_pctEFG * 5)) / Weight,
+                                                                                                Weighted_TS = ((TS*Total_Matchups) + (L5_pctTS * 5)) / Weight,
+                                                                                                Weighted_USGE = ((USGE*Total_Matchups) + (L5_pctUSGE * 5)) / Weight,
+                                                                                                Weighted_ORtg = ((ORtg*Total_Matchups) + (L5_ortg * 5)) / Weight,
+                                                                                                Weighted_NetRtg = ((NetRtg*Total_Matchups) + (L5_netrtg * 5)) / Weight,
+                                                                                                Weighted_Pace = ((Pace*Total_Matchups) + (L5_pace * 5)) / Weight,
+                                                                                                Weighted_NetRtg_Opp = ((NetRtg_Opp*Total_Matchups) + (L5_netrtg_Opp * 5)) / Weight,
+                                                                                                Weighted_RatioPIE = ((RatioPIE*Total_Matchups) + (L5_ratioPIE * 5)) / Weight,
+                                                                                          Weighted_RatioPIE_Opp = ((RatioPIE_Opp*Total_Matchups) + (L5_ratioPIE_Opp * 5)) / Weight
+                                                                                                )
+
+```
+
+#### Fix Data Error in Naming of the Clippers
+```{r}
+Weighted_Game_Averages_Adv <- Weighted_Game_Averages_Adv %>% mutate(nameTeam = ifelse(nameTeam == 'LA Clippers', 'Los Angeles Clippers', nameTeam),
+                                                                      matchup = str_replace_all(matchup, 'LA Clippers', 'Los Angeles Clippers'))
+```
+
+## Load Predictions Table to Get Necessary Matchups
+```{r}
+Predictions <- read.csv("Predictions.csv", header=TRUE)
+```
+
+### Create Matchups column for Predictions Table
+```{r}
+Predictions <- Predictions %>%
+  # create new column with team names concatenated in alphabetical order
+  mutate(matchup = if_else(Home < Away,
+                           paste0(Home, " | ", Away),
+                           paste0(Away, " | ", Home)))
+```
+
+### Get Locations of Each Predicted Game
+```{r}
+Predictions_Locations <- Predictions %>% select(Date, Home, matchup)
+```
+
+### Get Weighted Averages for Matchups
+```{r, warning=FALSE, message=FALSE}
+Prediction_Matchups <- inner_join(Weighted_Game_Averages_Adv, Predictions, by = "matchup") %>% select(-c(39, 41:43))
+# write.csv(Prediction_Matchups, "C:\\Users\\Rohan\\Documents\\School\\Spring 2023\\STOR 538\\Project_2\\Prediction_matchups.csv", row.names = FALSE)
+```
+
+### Load Prediction Matchups with Days of Rest
+```{r}
+Days_Rest <- read.csv("Prediction_matchups.csv", header = TRUE)
+Days_Rest <- Days_Rest %>% select(-c(X))
+```
+
+### Merge Predictions Table with Location and Days Rest
+```{r}
+Prediction_Matchups2 <- merge(Prediction_Matchups, Days_Rest, by = c('matchup', 'nameTeam'), all.x=TRUE)
+Prediction_Matchups2 <- merge(Prediction_Matchups2, Predictions_Locations, by = c('Date', 'matchup'))
+
+Prediction_Matchups2 <- Prediction_Matchups2 %>% select(-c('Home.y')) %>% rename(Home = 'Home.x')
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(locationGame = ifelse(nameTeam == Home, 'H', 'A'))
+```
+
+#### Clean Out Temporary Tables
+```{r}
+rm(Days_Rest, Predictions_Locations)
+```
+
+
+### Update Rest Days for Games when Teams Play Multiple Times
+```{r}
+# Clippers games b/c of typo
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Clippers' & Date == '4/5/2023'),3,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Clippers' & Date == '4/8/2023'),2,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Clippers' & Date == '4/9/2023'),0,countDaysRest))
+
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Lakers' & Date == '4/5/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Portland Trail Blazers' & Date == '4/8/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Phoenix Suns' & Date == '4/9/2023'),1,countDaysRest))
+
+# Games against same multiple teams
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Boston Celtics' & Date == '4/5/2023'),0,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Boston Celtics' & Date == '4/7/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Toronto Raptors' & Date == '4/5/2023'),0,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Toronto Raptors' & Date == '4/7/2023'),1,countDaysRest))
+
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Cleveland Cavaliers' & Date == '4/4/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Cleveland Cavaliers' & Date == '4/6/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Orlando Magic' & Date == '4/4/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Orlando Magic' & Date == '4/6/2023'),1,countDaysRest))
+
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Indiana Pacers' & Date == '4/5/2023'),2,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Indiana Pacers' & Date == '4/9/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'New York Knicks' & Date == '4/5/2023'),2,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'New York Knicks' & Date == '4/9/2023'),1,countDaysRest))
+
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Lakers' & Date == '4/4/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Los Angeles Lakers' & Date == '4/9/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Utah Jazz' & Date == '4/4/2023'),1,countDaysRest))
+Prediction_Matchups2 <- Prediction_Matchups2 %>% mutate(countDaysRest = ifelse((nameTeam == 'Utah Jazz' & Date == '4/9/2023'),0,countDaysRest))
+
+```
+
+
+## Create Offensive Rebound Predictions for Matchups
+```{r}
+Prediction_Matchups_Oreb <- Prediction_Matchups2 %>% select(Date, matchup, nameTeam, Home, countDaysRest, locationGame, Weighted_FTPct, Weighted_FG2Pct, Weighted_DREB,
+                                                            Weighted_AST, Weighted_STL, Weighted_BLK, Weighted_TOV, Weighted_PtsTOV, Weighted_Pts2Chance, Weighted_PtsFB,
+                                                            Weighted_PtsPnt, Weighted_TS, Weighted_USGE, Weighted_Pace, Weighted_RatioPIE) %>% rename(
+                                                             pctFTTeam = Weighted_FTPct,
+                                                             pctFG2Team = Weighted_FG2Pct,
+                                                             drebTeam = Weighted_DREB,
+                                                             astTeam = Weighted_AST,
+                                                             stlTeam = Weighted_STL,
+                                                             blkTeam = Weighted_BLK,
+                                                             tovTeam = Weighted_TOV,
+                                                             ptsOffTOV = Weighted_PtsTOV,
+                                                             ptsSecondChance = Weighted_Pts2Chance,
+                                                             ptsFastBreak = Weighted_PtsFB,
+                                                             ptsPaint = Weighted_PtsPnt,
+                                                             pctTS = Weighted_TS,
+                                                             pctUSGE = Weighted_USGE,
+                                                             pace = Weighted_Pace,
+                                                             ratioPIE = Weighted_RatioPIE
+                                                           )
+
+# Set unused coefficients to default
+Prediction_Matchups_Oreb$isB2B <- TRUE
+Prediction_Matchups_Oreb$isB2BFirst <- TRUE
+Prediction_Matchups_Oreb$isB2BSecond <- TRUE
+Prediction_Matchups_Oreb$pctFG3Team <- 0
+Prediction_Matchups_Oreb$pfTeam <- 0
+Prediction_Matchups_Oreb$rateFTA <- 0
+Prediction_Matchups_Oreb$pfd <- 0
+Prediction_Matchups_Oreb$countDaysRestTeam_Opp <- 0
+Prediction_Matchups_Oreb$ratioPIE_Opp <- 0
+Prediction_Matchups_Oreb$orebTeam <- 0
+
+# Set order of predictions table for model to use
+Oreb_Prediction_Order <- c('Date', 'matchup', 'nameTeam','Home', 'isB2B', 'isB2BFirst', 'isB2BSecond', 'locationGame', 'countDaysRest', 'pctFG3Team', 'pctFTTeam', 'pctFG2Team',
+                           'orebTeam', 'drebTeam', 'drebTeam', 'astTeam', 'stlTeam', 'blkTeam', 'tovTeam', 'pfTeam', 'rateFTA', 'ptsOffTOV', 'ptsSecondChance', 'ptsFastBreak',
+                          'ptsPaint', 'pfd', 'pctTS', 'pctUSGE', 'pace', 'ratioPIE', 'countDaysRestTeam_Opp', 'ratioPIE_Opp')
+
+Prediction_Matchups_Oreb <- dplyr::relocate(Prediction_Matchups_Oreb, Oreb_Prediction_Order)
+Prediction_Matchups_Oreb <- Prediction_Matchups_Oreb %>% rename(countDaysRestTeam = countDaysRest) %>% arrange(matchup, nameTeam)
+
+#write.csv(Prediction_Matchups_Oreb, "C:\\Users\\Rohan\\Documents\\School\\Spring 2023\\STOR 538\\Project_2\\Oreb_Predictions.csv", row.names = FALSE)
+```
+
+## Create Points Predictions for Matchups
+```{r}
+Prediction_Matchups_Pts <- Prediction_Matchups2 %>% select(Date, matchup, nameTeam, Home, countDaysRest,Weighted_FG2Pct, Weighted_OREB, Weighted_DREB, Weighted_AST, Weighted_STL,
+                                                           Weighted_BLK,Weighted_TOV, Weighted_PF, Weighted_FTARate, Weighted_PtsTOV, Weighted_Pts2Chance, Weighted_PtsFB,
+                                                           Weighted_PtsPnt, Weighted_TS, Weighted_USGE, Weighted_Pace) %>% rename(
+                                                            pctFG2Team = Weighted_FG2Pct, 
+                                                            orebTeam = Weighted_OREB, 
+                                                            drebTeam = Weighted_DREB,
+                                                            astTeam = Weighted_AST,
+                                                            stlTeam = Weighted_STL,
+                                                            blkTeam = Weighted_BLK,
+                                                            tovTeam = Weighted_TOV,
+                                                            pfTeam = Weighted_PF,
+                                                            rateFTA = Weighted_FTARate,
+                                                            ptsOffTOV = Weighted_PtsTOV,
+                                                            ptsSecondChance = Weighted_Pts2Chance,
+                                                            ptsFastBreak = Weighted_PtsFB,
+                                                            ptsPaint = Weighted_PtsPnt,
+                                                            pctTS = Weighted_TS,
+                                                            pctUSGE = Weighted_USGE,
+                                                            pace = Weighted_Pace
+                                                          )
+
+# Set unused coefficients to default
+Prediction_Matchups_Pts$isB2B <- TRUE
+Prediction_Matchups_Pts$isB2BFirst <- TRUE
+Prediction_Matchups_Pts$isB2BSecond <- TRUE
+Prediction_Matchups_Pts$locationGame <- 'H'
+Prediction_Matchups_Pts$pctFTTeam <- 0
+Prediction_Matchups_Pts$ptsTeam <- 0
+
+# Set order of predictions table for model to use
+Pts_Prediction_Order <- c('Date', 'matchup', 'nameTeam','Home', 'isB2B', 'isB2BFirst', 'isB2BSecond', 'locationGame', 'countDaysRest', 'pctFTTeam', 'pctFG2Team', 'orebTeam',
+                          'drebTeam', 'astTeam', 'stlTeam', 'blkTeam', 'tovTeam', 'pfTeam', 'ptsTeam', 'rateFTA', 'ptsOffTOV', 'ptsSecondChance', 'ptsFastBreak', 'ptsPaint',
+                          'pctTS','pctUSGE', 'pace')
+
+Prediction_Matchups_Pts <- dplyr::relocate(Prediction_Matchups_Pts, Pts_Prediction_Order)
+Prediction_Matchups_Pts <- Prediction_Matchups_Pts %>% rename(countDaysRestTeam = countDaysRest) %>% arrange(matchup, nameTeam)
+
+#write.csv(Prediction_Matchups_Pts, "C:\\Users\\Rohan\\Documents\\School\\Spring 2023\\STOR 538\\Project_2\\Points_Predictions.csv", row.names = FALSE)
+```
+
+## Create Final Predictions Table 
+```{r, warning=FALSE, message=FALSE}
+Predictions_FINAL <- read.csv("Predictions_Draft.csv", header = TRUE)
+
+Predictions_FINAL <- Predictions_FINAL %>% mutate(location = ifelse(TeamName == Home, 'H', 'A'))
+Predictions_FINAL <- Predictions_FINAL %>% arrange(Date, Matchup,location) %>% group_by(Date, Matchup, Home) %>% mutate(Points_lag = lag(PointsPredictions),
+                                                                                                                        OREB_lag = lag(OrebPredictions)) %>% 
+  summarise(Total = PointsPredictions + Points_lag,
+            Spread = PointsPredictions - Points_lag,
+            OREB = OrebPredictions + OREB_lag)
+
+Predictions_FINAL <- na.omit(Predictions_FINAL)
+
+Predictions_FINAL <- merge(Predictions_FINAL, Predictions, by.x=c('Date', 'Matchup', 'Home'), by.y=c('Date', 'matchup', 'Home'))
+Predictions_FINAL <- Predictions_FINAL %>% select(-c(Matchup, Spread.y, Total.y, OREB.y)) %>% rename(Spread = Spread.x,
+                                                                                            Total = Total.x,
+                                                                                            OREB = OREB.x)
+
+Predictions_FINAL <- dplyr::relocate(Predictions_FINAL, c(Date, Away, Home, Spread, Total, OREB))
+
+#write.csv(Predictions_FINAL, "C:\\Users\\Rohan\\Documents\\School\\Spring 2023\\STOR 538\\Project_2\\Predictions_FINAL.csv", row.names = FALSE)
+```
