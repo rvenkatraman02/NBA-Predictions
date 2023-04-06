@@ -1,6 +1,6 @@
 ---
 title: "Playoffs_2_NEW"
-author: "Rohan Venkatraman"
+author: "Rohan Venkatraman, Yulim Kim"
 date: "2023-04-03"
 output: html_document
 ---
