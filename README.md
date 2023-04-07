@@ -15,7 +15,12 @@ To predict each team's points and offensive rebounds, we conducted a series of r
 In this repositiory you will find our Rmd notebook files for both the cleaning and modeling stages, a spreadsheet of our predictions and actual results, and a comprehensive final report detailing our entire methodology. This project showcases our ability to utilize a diverse range of analytical tools and techniques to deliver actionable insights and predictions.
 
 ### Files in this Repository
-
+`/Data_Files/`: Folder containing csv files used in our Rmd files <br>
+`Playoffs_2-Data_Cleaning.Rmd`: R notebook file used to import and clean the data. <br>
+`Playoffs_2-Pts_Modeling.Rmd`: R notebook file used to model and predict points scored by team. <br>
+`Playoffs_2-Oreb_Modeling.Rmd`: R notebook file used to model and predict offensive rebounds by team. <br>
+`Predictions_FINAL.csv`: CSV file containing our final predictions. <br>
+`2023_NBA_Predictions_Report.pdf`: Final report with our methodologies for the whole project. <br>
 
 ### RMSE of NBA Predictions
 
