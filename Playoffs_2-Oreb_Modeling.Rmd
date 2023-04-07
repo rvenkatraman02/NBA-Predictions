@@ -1,5 +1,5 @@
 ---
-title: "Playoff 2 Oreb Modeling"
+title: "Playoffs 2 Oreb Modeling"
 author: "Yulim Kim, Rohan Venkatraman"
 output: html_document
 date: "2023-04-04"
