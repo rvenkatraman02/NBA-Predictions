@@ -1,5 +1,5 @@
 ---
-title: "playoff2_modeling"
+title: "Playoffs 2 Points Modeling"
 author: "Yulim Kim, Rohan Venkatraman"
 output: html_document
 date: "2023-04-04"
