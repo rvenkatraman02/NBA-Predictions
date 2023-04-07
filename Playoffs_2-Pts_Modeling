@@ -1,0 +1,495 @@
+---
+title: "playoff2_modeling"
+author: "Yulim Kim, Rohan Venkatraman"
+output: html_document
+date: "2023-04-04"
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(DT)
+library(kableExtra)
+library(ggplot2)
+library(data.table)
+library(magrittr)
+library(nbastatR)
+library(tidyverse)
+library(broom)
+library(glmnet)
+library(car)
+```
+
+# Import Final Data Set 
+```{r, warning=FALSE}
+# CSV comes from Games2023_Adv Table in Playoffs_2-Data_Cleaning.Rmd
+
+MASTER = read_csv('Games2023_Advanced.csv')
+head(MASTER)
+```
+
+# Looking at Distribution of ptsTeam
+```{r}
+hist(MASTER$ptsTeam, breaks=300, xlab="Points", main="Distribution of Points")
+```
+
+# RMSE and MAE Functions
+```{r}
+#rmse function 
+rmse <- function(actual, predicted) {
+  error <- actual - predicted
+  rmse <- sqrt(mean(error^2))
+  return(rmse)
+}
+#mae function 
+mae <- function(actual, predicted) {
+  return(mean(abs(actual - predicted)))
+}
+```
+
+# Test and Train Data Split + Clean 
+```{r}
+#set seed for randomization 
+set.seed(739205382)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(MASTER), replace=TRUE, prob=c(0.7,0.3))
+
+#train data set = 70% of MASTER
+points_train_data  <- MASTER[sample,]
+#test data set = 30% of MASTER
+points_test_data   <- MASTER[!sample, ]
+
+#clean the data -- rest days 
+points_train_data$countDaysRestTeam = ifelse(points_train_data$countDaysRestTeam > 100, 4, points_train_data$countDaysRestTeam)
+points_test_data$countDaysRestTeam = ifelse(points_test_data$countDaysRestTeam > 100, 4, points_test_data$countDaysRestTeam)
+
+points_train_data$countDaysRestTeam_Opp = ifelse(points_train_data$countDaysRestTeam_Opp > 100, 4, points_train_data$countDaysRestTeam_Opp)
+points_test_data$countDaysRestTeam_Opp = ifelse(points_test_data$countDaysRestTeam_Opp > 100, 4, points_test_data$countDaysRestTeam_Opp)
+
+#take out columns unnecessary to modeling
+points_train_data1 = points_train_data %>% select(-c(1:7, 13:19, 21:22, 24:26, 29, 36, 42:49, 52:58, 60:69)) 
+points_test_data1 = points_test_data %>% select(-c(1:7, 13:19, 21:22, 24:26, 29, 36, 42:49, 52:58, 60:69)) 
+```
+
+# Modeling on Full Train+Test Data Sets
+
+## Regular Linear Regression - with first train set 
+```{r}
+#variable selection -- stepwise 
+full = lm(ptsTeam~., data=points_train_data1)
+summary(full)
+MSE = (summary(full)$sigma)^2
+none = lm(ptsTeam~1, data=points_train_data1)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+
+points_mod1=lm(formula = ptsTeam ~ pctTS + orebTeam + pace + tovTeam + pfTeam + 
+    pctUSGE + ptsPaint + ptsSecondChance + pctFG2Team + astTeam + 
+    drebTeam + stlTeam + rateFTA + ptsOffTOV + ptsFastBreak, 
+    data = points_train_data1)
+summary(points_mod1)
+
+predict1 = predict(points_mod1, newdata = points_test_data1)
+
+rmse(points_test_data1$ptsTeam, predict1)
+mae(points_test_data1$ptsTeam, predict1)
+
+vif(points_mod1) # nothing removed 
+```
+
+## Regular Linear Regression - Looking at Interactions 
+```{r}
+#if pretty correlated, add interactions!
+points_mod2=lm(formula = ptsTeam ~ pctTS + pace + tovTeam + pfTeam + 
+    pctUSGE + ptsPaint + ptsSecondChance*orebTeam + ptsSecondChance + orebTeam + pctFG2Team + astTeam + 
+    drebTeam + stlTeam + rateFTA, data = points_train_data1)
+summary(points_mod2)
+
+predict2 = predict(points_mod2, newdata = points_test_data1)
+rmse(points_test_data1$ptsTeam, predict2)
+mae(points_test_data1$ptsTeam, predict2)
+```
+
+## Poisson Model 
+```{r}
+poisson_mod_full = glm(ptsTeam~., data=points_train_data1, family=poisson())
+anova(poisson_mod_full, test="Chi")
+
+points_mod3=glm(ptsTeam~locationGame+pctFTTeam+pctFG2Team+orebTeam+drebTeam+astTeam+stlTeam+tovTeam+pfTeam+rateFTA+ptsOffTOV+ptsSecondChance+ptsFastBreak+ptsPaint+pctTS+pace, data=points_train_data1, family=poisson())
+summary(points_mod3)
+
+predict3 = predict(points_mod3, newdata = points_test_data1, type='response')
+rmse(points_test_data1$ptsTeam, predict3)
+mae(points_test_data1$ptsTeam, predict3)
+```
+
+## Ridge Regression on Linear Model 
+```{r}
+#The outcome is typically a model that fits the training data less well than OLS but generalises better because it is less sensitive to extreme variance in the data such as outliers.
+
+#setting up the data
+train_x = model.matrix(ptsTeam~., points_train_data1)[,-1] # trim off the first column leaving only the predictors
+train_y = points_train_data1 %>%
+  select(ptsTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+test_x = model.matrix(ptsTeam~., points_test_data1)[,-1] 
+test_y = points_test_data1 %>%
+  select(ptsTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+#testing lambdas 
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv <- cv.glmnet(train_x, train_y, alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv$lambda.min
+#optimal_lambda = 0.03162278
+points_mod4 = glmnet(train_x, train_y, alpha = 0, lambda = 0.03162278)
+coef(points_mod4) #coefficients of model 
+
+predictions_ridge <- predict(points_mod4, s = 0.03162278, newx = test_x, type='response')
+rmse(points_test_data1$ptsTeam, predictions_ridge)
+mae(points_test_data1$ptsTeam, predictions_ridge)
+```
+
+## LASSO Regression on Linear Model 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+cv_lasso <- cv.glmnet(train_x, train_y, alpha = 1, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso$lambda.min
+#optimal_lambda = 0.03981072
+points_mod5 <- glmnet(train_x, train_y, alpha = 1, lambda = 0.03981072, standardize = TRUE)
+coef(points_mod5)
+
+predictions_lasso <- predict(points_mod5, s = 0.03981072, newx = test_x, type='response')
+rmse(points_test_data1$ptsTeam, predictions_lasso)
+mae(points_test_data1$ptsTeam, predictions_lasso)
+```
+
+## Ridge Regression on Poisson Model 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv2 <- cv.glmnet(train_x, train_y, family='poisson', alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv2$lambda.min
+#optimal_lambda = 0.001
+points_mod6 = glmnet(train_x, train_y, family='poisson', alpha = 0, lambda = 0.001)
+coef(points_mod6) #coefficients of model 
+
+predictions_ridge_pois <- predict(points_mod6, s = 0.001, newx = test_x, type='response')
+rmse(points_test_data1$ptsTeam, predictions_ridge_pois) #3.693841
+mae(points_test_data1$ptsTeam, predictions_ridge_pois) #2.469093
+```
+
+## LASSO Regression on Poisson Model 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv_lasso2 <- cv.glmnet(train_x, train_y, alpha = 1, family='poisson', lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso2$lambda.min
+#optimal_lambda= 0.02511886
+points_mod7 <- glmnet(train_x, train_y, alpha = 1, family='poisson', lambda = 0.02511886, standardize = TRUE)
+coef(points_mod7)
+
+predictions_lasso_pois <- predict(points_mod7, s = 0.02511886, newx = test_x, type='response')
+rmse(points_test_data1$ptsTeam, predictions_lasso_pois)
+mae(points_test_data1$ptsTeam, predictions_lasso_pois)
+```
+
+# Remove Outlier Games 
+```{r}
+calculate_iqr <- function(x) {
+  q <- quantile(x, c(0.25, 0.75))
+  iqr <- q[2] - q[1]
+  return(iqr)
+}
+
+i=calculate_iqr((MASTER$ptsTeam))
+q=quantile(MASTER$ptsTeam, c(0.25, 0.75))
+
+outlier_low = q[1] - 1.5*i #84
+outlier_high = q[2] + 1.5*i #145
+
+master_no_outliers = MASTER %>% filter((ptsTeam >= 84) & (ptsTeam <= 145))
+head(master_no_outliers)
+```
+
+# Train and Test on Outlier Removed Data
+```{r}
+#set seed for randomization 
+set.seed(739205382)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(master_no_outliers), replace=TRUE, prob=c(0.7,0.3))
+
+#train data set = 70% of MASTER
+points_train_outs  <- master_no_outliers[sample,]
+#test data set = 30% of MASTER
+points_test_outs   <- master_no_outliers[!sample, ]
+
+#clean the data -- rest days 
+points_train_outs$countDaysRestTeam = ifelse(points_train_outs$countDaysRestTeam > 100, 4, points_train_outs$countDaysRestTeam)
+points_train_outs$countDaysRestTeam = ifelse(points_train_outs$countDaysRestTeam > 100, 4, points_train_outs$countDaysRestTeam)
+
+points_test_outs$countDaysRestTeam_Opp = ifelse(points_test_outs$countDaysRestTeam_Opp > 100, 4, points_test_outs$countDaysRestTeam_Opp)
+points_test_outs$countDaysRestTeam_Opp = ifelse(points_test_outs$countDaysRestTeam_Opp > 100, 4, points_test_outs$countDaysRestTeam_Opp)
+
+#take out columns unnecessary to modeling
+points_train_data2 = points_train_outs %>% select(-c(1:7, 13:19, 21:22, 24:26, 29, 36, 42:49, 52:58, 60:69)) 
+points_test_data2 = points_test_outs %>% select(-c(1:7, 13:19, 21:22, 24:26, 29, 36, 42:49, 52:58, 60:69)) 
+```
+
+# Modeling on Outlier Removed Data 
+
+## Linear Regression 
+```{r}
+#variable selection -- stepwise 
+full = lm(ptsTeam~., data=points_train_data2)
+MSE = (summary(full)$sigma)^2
+none = lm(ptsTeam~1, data=points_train_data2)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+#model using stepwise 
+lin_step_mod=lm(formula = ptsTeam ~ pctTS + orebTeam + pace + tovTeam + pfTeam + 
+    pctUSGE + ptsPaint + drebTeam + ptsSecondChance + astTeam + 
+    pctFG2Team + rateFTA + stlTeam + ptsOffTOV + ptsFastBreak, 
+    data = points_train_data2)
+summary(lin_step_mod)
+#model using backwards/forwards (same)
+lin_back_mod=lm(formula = ptsTeam ~ pctFG2Team + orebTeam + drebTeam + astTeam + 
+    stlTeam + tovTeam + pfTeam + rateFTA + ptsOffTOV + ptsSecondChance + 
+    ptsFastBreak + ptsPaint + pctTS + pctUSGE + pace, data = points_train_data2)
+summary(lin_back_mod)
+
+step_predictions = predict(mod1_step_outs, newdata = points_test_data2)
+back_predictions = predict(mod1_back_outs, newdata = points_test_data2)
+
+rmse(points_test_data2$ptsTeam, step_predictions) #3.436834
+rmse(points_test_data2$ptsTeam, back_predictions) #3.436834
+
+mae(points_test_data2$ptsTeam, step_predictions) #2.502266
+mae(points_test_data2$ptsTeam, back_predictions) #2.502266
+```
+
+## Linear Ridge Regression 
+```{r}
+#setting up the data
+train_x2 = model.matrix(ptsTeam~., points_train_data2)[,-1] # trim off the first column leaving only the predictors
+train_y2 = points_train_data2 %>%
+  select(ptsTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+test_x2 = model.matrix(ptsTeam~., points_test_data2)[,-1] 
+test_y2 = points_test_data2 %>%
+  select(ptsTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+#testing lambdas 
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv <- cv.glmnet(train_x2, train_y2, alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv$lambda.min
+#optimal_lambda = 0.007943282
+lin_ridge_mod = glmnet(train_x2, train_y2, alpha = 0, lambda = 0.007943282)
+coef(lin_ridge_mod) #coefficients of model 
+
+predictions_lin_ridge <- predict(lin_ridge_mod, s = 0.007943282, newx = test_x2, type='response')
+rmse(points_test_data2$ptsTeam, predictions_lin_ridge) #3.446409
+mae(points_test_data2$ptsTeam, predictions_lin_ridge) #2.513493
+```
+
+## Linear LASSO Regression -- BEST MODEL 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+cv_lasso <- cv.glmnet(train_x2, train_y2, alpha = 1, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso$lambda.min
+#optimal_lambda = 0.03162278
+lin_lasso_mod <- glmnet(train_x2, train_y2, alpha = 1, lambda = 0.03162278, standardize = TRUE)
+coef(lin_lasso_mod)
+
+predictions_lin_lasso <- predict(lin_lasso_mod, s = 0.03162278, newx = test_x2, type='response')
+rmse(points_test_data2$ptsTeam, predictions_lin_lasso) #3.431431
+mae(points_test_data2$ptsTeam, predictions_lin_lasso) #2.49662
+```
+
+## Poisson Model  
+```{r}
+pois_mod1 = glm(ptsTeam~., data=points_train_data2, family=poisson())
+anova(pois_mod1, test="Chi")
+
+pois_mod2=glm(ptsTeam~locationGame+pctFTTeam+pctFG2Team+orebTeam+drebTeam+astTeam+stlTeam+tovTeam+pfTeam+rateFTA+ptsOffTOV+ptsSecondChance+ptsFastBreak+ptsPaint+pctTS+pace, data=points_train_data2, family=poisson())
+summary(pois_mod2)
+
+predictions_pois = predict(pois_mod2, newdata = points_test_data2, type='response')
+rmse(points_test_data2$ptsTeam, predictions_pois) #3.570859
+mae(points_test_data2$ptsTeam, predictions_pois) #2.677663
+```
+
+## Poisson Ridge Regression 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv2_outs <- cv.glmnet(train_x2, train_y2, family='poisson', alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv2$lambda.min
+#optimal_lambda = 0.1584893
+pois_ridge_mod = glmnet(train_x2, train_y2, family='poisson', alpha = 0, lambda = 0.1584893)
+coef(pois_ridge_mod) #coefficients of model 
+
+predictions_pois_ridge <- predict(pois_ridge_mod, s = 0.1584893, newx = test_x2, type='response')
+rmse(points_test_data2$ptsTeam, predictions_pois_ridge) #3.474666
+mae(points_test_data2$ptsTeam, predictions_pois_ridge) #2.553224
+```
+
+## Poisson LASSO Regression
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv_lasso2 <- cv.glmnet(train_x2, train_y2, alpha = 1, family='poisson', lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso2$lambda.min
+#optimal_lambda = 0.02511886
+pois_lasso_mod <- glmnet(train_x2, train_y2, alpha = 1, family='poisson', lambda = 0.02511886, standardize = TRUE)
+coef(pois_lasso_mod)
+
+predictions_pois_lasso <- predict(pois_lasso_mod, s = 0.02511886, newx = test_x2, type='response')
+rmse(points_test_data2$ptsTeam, predictions_pois_lasso) #3.46246
+mae(points_test_data2$ptsTeam, predictions_pois_lasso) #2.53989
+```
+
+## Modeling on top of best predictive model above, and HCA
+
+### Merge Outlier Data by Team Name
+```{r}
+#Select Team Name, H or A, Actual Points, Predicted Points (Linear LASSO Regression), HCA 
+Points_HCA = data.frame(points_test_outs$nameTeam, points_test_outs$locationGame, points_test_outs$ptsTeam, predictions_lin_lasso)
+
+Points_HCA=Points_HCA %>% rename(TeamName=points_test_outs.nameTeam,
+                                 locationGame=points_test_outs.locationGame,
+                                 actualPoints=points_test_outs.ptsTeam,
+                                 predictedPoints=s1)
+
+Points_HCA_Final = merge(x = Points_HCA, y = NBA_Master[ , c("nameTeam", "HCA")], by.x ="TeamName", by.y="nameTeam", all.x=TRUE)
+
+head(Points_HCA_Final)
+```
+
+### New Model to Find Linear Weight of HCA on Points 
+```{r}
+#home games only 
+home = Points_HCA_Final %>% filter(locationGame=='H')
+#test and train on home games only 
+set.seed(623327)
+sample <- sample(c(TRUE, FALSE), nrow(home), replace=TRUE, prob=c(0.7,0.3))
+#train data set = 70% of MASTER
+train_home <- home[sample,]
+#test data set = 30% of MASTER
+test_home   <- home[!sample, ]
+
+#linear model on training data set 
+home_mod = lm(actualPoints~predictedPoints+HCA, data=train_home)
+summary(home_mod)
+
+#test model output on test data
+hca_predictions = predict(home_mod, test_home)
+
+rmse(test_home$actualPoints, hca_predictions) #3.727575
+```
+
+# Testing Linear LASSO Model on Game by Game Log Data 
+
+## TEST - WARRIORS @ SPURS
+```{r}
+#new data frame with Warrior data
+data_warriors_pts = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame=0, countDaysRestTeam=2,pctFTTeam=0, pctFG2Team=0.6035138,orebTeam=10.71429, drebTeam=34.28571, astTeam=30.14286, stlTeam=7.428571, blkTeam=4.285714, tovTeam=14.14286, pfTeam=19.71429, ptsTeam=0, rateFTA=0.2357143, ptsOffTOV=18.14286, ptsSecondChance=15.42857, ptsFastBreak=15.14286, ptsPaint=49.14286, pctTS=.619, pctUSGE=.1984286, pace=101.5)
+
+wars_x=model.matrix(ptsTeam~., data_warriors_pts)[,-1] 
+
+wars_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = wars_x, type='response')
+wars_prediction #122.9642
+```
+
+```{r}
+#new data frame with Spurs data
+data_spurs_pts = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame=0, countDaysRestTeam=1,pctFTTeam=0, pctFG2Team=0.4872206,orebTeam=10.14286, drebTeam=31.85714, astTeam=25, stlTeam=6.714286, blkTeam=3.857143, tovTeam=13.71429, pfTeam=18.71429, ptsTeam=0, rateFTA=0.2162857, ptsOffTOV=13.42857, ptsSecondChance=13.71429, ptsFastBreak=8.714286, ptsPaint=48, pctTS=.5045714, pctUSGE=.1975714, pace=104.2857)
+
+spurs_x=model.matrix(ptsTeam~., data_spurs_pts)[,-1] 
+spurs_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = spurs_x, type='response')
+spurs_prediction #104.5327
+```
+
+## TEST - NETS @ HAWKS
+```{r}
+#new data frame with Nets data
+data_nets_pts = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame=0, countDaysRestTeam=1,pctFTTeam=0, pctFG2Team=0.5609807, orebTeam=11.125, drebTeam=30.75, astTeam=24.25, stlTeam=7.25, blkTeam=6.625, tovTeam=13.875, pfTeam=18.875,ptsTeam=0, rateFTA=0.26975, ptsOffTOV=18.125, ptsSecondChance=16.625, ptsFastBreak=14.125, ptsPaint=45.5, pctTS=.595375, pctUSGE=.1975, pace=96.875)
+
+nets_x=model.matrix(ptsTeam~., data_nets_pts)[,-1] 
+nets_prediction <- predict(lin_lasso_mod, lambda = 0.03162278, newx = nets_x, type='response')
+nets_prediction #114.5386
+```
+
+```{r}
+#new data frame with Hawks data 
+data_hawks_pts = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame=0, countDaysRestTeam=2,pctFTTeam=0, pctFG2Team=0.5340038,orebTeam=14.375, drebTeam=32.375, astTeam=24.75, stlTeam=6.625, blkTeam=5.125, tovTeam=12.625, pfTeam=17.125,ptsTeam=0, rateFTA=0.26325, ptsOffTOV=15.375, ptsSecondChance=19.375, ptsFastBreak=13.5, ptsPaint=59.25, pctTS=.586, pctUSGE=.198, pace=101.25)
+
+hawks_x=model.matrix(ptsTeam~., data_hawks_pts)[,-1] 
+hawks_prediction <- predict(lin_lasso_mod, lambda = 0.03162278, newx = hawks_x, type='response')
+hawks_prediction #122.367
+```
+
+
+# FINAL PREDICTIONS 
+```{r, warning=FALSE}
+#Setting up the data for predictions
+
+# CSV comes from Prediction_Matchups_Pts from Playoffs_2-Data_Cleaning.Rmd
+points_data = read_csv('Points_Predictions.csv')
+points_data_vars=points_data %>% select(-c(1:4))
+points_data_vars$locationGame <- factor(points_data_vars$locationGame, levels = c("H", "A"))
+
+points_x = model.matrix(ptsTeam~., points_data_vars)[,-1] 
+
+#Predict
+points_predictions_final = predict(lin_lasso_mod, lambda = 0.03162278, newx = points_x, type='response')
+head(points_predictions_final)
+```
+
+#FINAL DATA SET WITH PREDICTED POINTS AND OFFENSIVE REBOUNDS
+```{r}
+PREDICTIONS_FINAL = data.frame(points_data$Date, points_data$matchup, points_data$nameTeam, points_data$Home, points_predictions_final[,1], oreb_predictions_final[,1])
+PREDICTIONS_FINAL = PREDICTIONS_FINAL %>% rename(Date = points_data.Date,
+                                                 Matchup = points_data.matchup,
+                                                 TeamName = points_data.nameTeam,
+                                                 Home = points_data.Home,
+                                                 PointsPredictions = points_predictions_final...1.,
+                                                 OrebPredictions = oreb_predictions_final...1.
+                                                 )
+
+
+head(PREDICTIONS_FINAL)
+
+#export as CSV
+#write.csv(PREDICTIONS_FINAL, 'PREDICTIONS_FINAL.csv', row.names=FALSE)
+```
+
