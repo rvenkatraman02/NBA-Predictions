@@ -1,0 +1,515 @@
+---
+title: "Playoff 2 Oreb Modeling"
+author: "Yulim Kim, Rohan Venkatraman"
+output: html_document
+date: "2023-04-04"
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(DT)
+library(kableExtra)
+library(ggplot2)
+library(data.table)
+library(magrittr)
+library(nbastatR)
+library(tidyverse)
+library(broom)
+library(glmnet)
+library(car)
+```
+
+# Import Final Data Set 
+```{r}
+# CSV comes from Games2023_Adv Table in Playoffs_2-Data_Cleaning.Rmd
+
+MASTER = read_csv('Games2023_Advanced.csv')
+head(MASTER)
+```
+
+# Looking at Distribution of OREB
+```{r}
+hist(MASTER$orebTeam, breaks=70, xlab="Offensive Rebounds", main="Distribution of Offensive Rebounds")
+```
+
+# RMSE and MAE Functions
+```{r}
+#rmse function 
+rmse <- function(actual, predicted) {
+  error <- actual - predicted
+  rmse <- sqrt(mean(error^2))
+  return(rmse)
+}
+#mae function 
+mae <- function(actual, predicted) {
+  return(mean(abs(actual - predicted)))
+}
+```
+
+#Creating Test and Train data + Clean
+```{r}
+#set seed for randomization 
+set.seed(364829)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(MASTER), replace=TRUE, prob=c(0.7,0.3))
+
+#train data set = 70% of MASTER
+train_data  <- MASTER[sample,]
+#test data set = 30% of MASTER
+test_data   <- MASTER[!sample, ]
+
+
+#clean the data -- rest days 
+train_data$countDaysRestTeam = ifelse(train_data$countDaysRestTeam > 100, 4, train_data$countDaysRestTeam)
+test_data$countDaysRestTeam = ifelse(test_data$countDaysRestTeam > 100, 4, test_data$countDaysRestTeam)
+
+train_data$countDaysRestTeam_Opp = ifelse(train_data$countDaysRestTeam_Opp > 100, 4, train_data$countDaysRestTeam_Opp)
+test_data$countDaysRestTeam_Opp = ifelse(test_data$countDaysRestTeam_Opp > 100, 4, test_data$countDaysRestTeam_Opp)
+
+#take out columns unnecessary to modeling
+oreb_train_data = train_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52, 54:58, 60:61, 64:68)) 
+oreb_test_data = test_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52, 54:58, 60:61, 64:68)) 
+```
+
+# Modeling on Full Train+Test Data Sets
+
+## Linear Model 
+```{r}
+#variable selection -- stepwise 
+full = lm(orebTeam~., data=oreb_train_data)
+summary(full)
+MSE = (summary(full)$sigma)^2
+none = lm(orebTeam~1, data=oreb_train_data)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+
+#Stepwise Model 
+oreb_mod1=lm(formula = orebTeam ~ ptsSecondChance + pctTS + ortg + tovTeam + 
+    pctUSGE + ratioPIE + pfd + ptsPaint + pctFG2Team + astTeam, 
+    data = oreb_train_data)
+summary(oreb_mod1)
+#Backward/Forward Model
+oreb_mod2 = lm(formula = orebTeam ~ pctFG2Team + drebTeam + astTeam + stlTeam + 
+    tovTeam + ptsSecondChance + ptsFastBreak + ptsPaint + pfd + 
+    pctTS + pctUSGE + ortg + pace + ratioPIE, data = oreb_train_data)
+summary(oreb_mod2)
+
+
+predict1 = predict(oreb_mod1, newdata = oreb_test_data)
+predict2 = predict(oreb_mod2, newdata = oreb_test_data)
+
+rmse(oreb_test_data$orebTeam, predict1) #1.667181
+rmse(oreb_test_data$orebTeam, predict2) #1.671567
+
+#Looking for multicollinearity 
+vif(mod1_step)
+```
+
+### Linear Regression without True Shooting Variable
+```{r}
+no_TS_train = train_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 50, 52, 54:58, 60:61, 64:68)) 
+no_TS_test = test_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 50, 52, 54:58, 60:61, 64:68)) 
+
+#without pctTS
+full = lm(orebTeam~., data=no_TS_train)
+MSE = (summary(full)$sigma)^2
+none = lm(orebTeam~1, data=no_TS_train)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+#stepwise
+no_ts1 = lm(formula = orebTeam ~ ptsSecondChance + pctFG2Team + ptsPaint + 
+    pctFG3Team + ortg + tovTeam + pctFTTeam + rateFTA + pctUSGE + 
+    blkTeam + pfd + ratioPIE + isB2B, data = no_TS_train)
+summary(no_ts1)
+#backward/forward
+no_ts2 = lm(formula = orebTeam ~ isB2B + pctFG3Team + pctFTTeam + pctFG2Team + 
+    blkTeam + tovTeam + rateFTA + ptsSecondChance + ptsPaint + 
+    pfd + pctUSGE + ortg + ratioPIE, data = no_TS_train)
+summary(no_ts2)
+
+predict_nots1 = predict(no_ts1, newdata = no_TS_test)
+predict_nots2 = predict(no_ts2, newdata = no_TS_test)
+
+rmse(no_TS_test$orebTeam, predict_nots1) #1.667181
+rmse(no_TS_test$orebTeam, predict_nots2) #1.671567
+
+#Looking for multicollinearity again 
+vif(no_ts1)
+```
+
+### Linear Regression without Offensive Rating Variable -- Best of the Linear Regressions
+```{r}
+no_ortg_train = train_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:53, 54:58, 60:61, 64:68)) 
+no_ortg_test = test_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:53, 54:58, 60:61, 64:68)) 
+
+#without ortg
+full = lm(orebTeam~., data=no_ortg_train)
+MSE = (summary(full)$sigma)^2
+none = lm(orebTeam~1, data=no_ortg_train)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+#stepwise 
+no_ortg1=lm(formula = orebTeam ~ ptsSecondChance + pctTS + ptsPaint + 
+    pctFG2Team + ratioPIE + tovTeam + drebTeam + stlTeam + astTeam + 
+    ptsFastBreak + pctUSGE, data = no_ortg_train)
+summary(no_ortg1)
+#backward/forward
+no_ortg2=lm(formula = orebTeam ~ pctFG2Team + drebTeam + astTeam + stlTeam + 
+    tovTeam + ptsSecondChance + ptsFastBreak + ptsPaint + pctTS + 
+    pctUSGE + ratioPIE, data = no_ortg_train)
+summary(no_ortg2)
+
+predict_noortg1 = predict(no_ortg1, newdata = no_ortg_test)
+predict_noortg2 = predict(no_ortg2, newdata = no_ortg_test)
+
+rmse(no_TS_test$orebTeam, predict_noortg1) #2.463256
+rmse(no_TS_test$orebTeam, predict_noortg2) #2.463256
+
+#Check for multicollinearity again-- all good now 
+vif(no_ortg1)
+```
+
+## New Test and Train without ORTG
+```{r}
+oreb_train_data2 = train_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:58, 60:61, 64:68)) 
+oreb_test_data2 = test_data %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:58, 60:61, 64:68)) 
+```
+
+## Linear Ridge Regression
+```{r}
+#setting up the data
+train_x = model.matrix(orebTeam~., oreb_train_data2)[,-1] # trim off the first column leaving only the predictors
+train_y = oreb_train_data2 %>%
+  select(orebTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+test_x = model.matrix(orebTeam~., oreb_test_data2)[,-1] 
+test_y = oreb_test_data2 %>%
+  select(orebTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+#testing lambdas 
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv <- cv.glmnet(train_x, train_y, alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv$lambda.min
+#optimal_lambda = 0.02511886
+oreb_mod3 = glmnet(train_x, train_y, alpha = 0, lambda = 0.02511886)
+coef(oreb_mod3) #coefficients of model 
+
+predictions_ridge <- predict(oreb_mod3, s = 0.02511886, newx = test_x, type='response')
+rmse(oreb_test_data2$orebTeam, predictions_ridge) #2.482626
+mae(oreb_test_data2$orebTeam, predictions_ridge) #1.961562
+```
+
+## Linear LASSO Regression
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+cv_lasso <- cv.glmnet(train_x, train_y, alpha = 1, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso$lambda.min
+#optimal_lambda = 0.01584893
+oreb_mod4 <- glmnet(x, y, alpha = 1, lambda = 0.01584893, standardize = TRUE)
+coef(oreb_mod4)
+
+predictions_lasso <- predict(oreb_mod4, s = 0.01584893, newx = test_x, type='response')
+rmse(oreb_test_data2$orebTeam, predictions_lasso) #2.468475
+mae(oreb_test_data2$orebTeam, predictions_lasso) #1.948236
+```
+
+## Poisson Regression Model 
+```{r}
+#full poisson model 
+oreb_mod5 = glm(orebTeam~., data=oreb_train_data2, family=poisson())
+anova(oreb_mod5, test="Chi")
+
+#after variable selection model 
+oreb_mod6=glm(orebTeam~pctFG3Team+pctFTTeam+pctFG2Team+astTeam+tovTeam+ptsOffTOV+ptsSecondChance+ptsFastBreak+ptsPaint+pctTS+pace+ratioPIE, data=oreb_train_data2, family=poisson())
+summary(oreb_mod6)
+
+pois_predictions = predict(oreb_mod6, newdata = oreb_test_data2, type='response')
+rmse(oreb_test_data2$orebTeam, pois_predictions) #2.556863
+mae(oreb_test_data2$orebTeam, pois_predictions) #2.012913
+```
+
+## Poisson Ridge Regression 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv2 <- cv.glmnet(train_x, train_y, family='poisson', alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv2$lambda.min
+#optimal_lambda = 0.05011872
+oreb_mod7 = glmnet(train_x, train_y, family='poisson', alpha = 0, lambda = 0.05011872)
+coef(oreb_mod7) #coefficients of model 
+
+predictions_ridge_pois <- predict(oreb_mod7, s = 0.05011872, newx = test_x, type='response')
+rmse(oreb_test_data2$orebTeam, predictions_ridge_pois) #2.542073
+mae(oreb_test_data2$orebTeam, predictions_ridge_pois) #2.001334
+```
+
+## Poisson LASSO Regression 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv_lasso2 <- cv.glmnet(train_x, train_y, alpha = 1, family='poisson', lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso2$lambda.min
+#optimal_lambda = 0.01258925
+oreb_mod8 <- glmnet(x, y, alpha = 1, family='poisson', lambda = 0.01258925, standardize = TRUE)
+coef(oreb_mod8)
+
+predictions_lasso_pois <- predict(oreb_mod8, s = 0.01258925, newx = test_x, type='response')
+rmse(oreb_test_data2$orebTeam, predictions_lasso_pois) #2.521144
+mae(oreb_test_data2$orebTeam, predictions_lasso_pois) #1.988767
+```
+
+# Remove Outlier Games 
+```{r}
+calculate_iqr <- function(x) {
+  q <- quantile(x, c(0.25, 0.75))
+  iqr <- q[2] - q[1]
+  return(iqr)
+}
+q
+i=calculate_iqr((MASTER$orebTeam))
+q=quantile(MASTER$orebTeam, c(0.25, 0.75))
+outlier_low = q[1] - 1.5*i #1
+outlier_high = q[2] + 1.5*i #21
+master_no_outliers = MASTER %>% filter((orebTeam <= 21) & (orebTeam >= 1))
+head(master_no_outliers)
+```
+
+# Train and Test on Outlier Removed Data
+```{r}
+#set seed for randomization 
+set.seed(364829)
+
+#use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(master_no_outliers), replace=TRUE, prob=c(0.7,0.3))
+
+#train data set = 70% of MASTER
+train_data2  <- master_no_outliers[sample,]
+#test data set = 30% of MASTER
+test_data2   <- master_no_outliers[!sample, ]
+
+
+#clean the data -- rest days 
+train_data2$countDaysRestTeam = ifelse(train_data2$countDaysRestTeam > 100, 4, train_data2$countDaysRestTeam)
+test_data2$countDaysRestTeam = ifelse(test_data2$countDaysRestTeam > 100, 4, test_data2$countDaysRestTeam)
+
+train_data2$countDaysRestTeam_Opp = ifelse(train_data2$countDaysRestTeam_Opp > 100, 4, train_data2$countDaysRestTeam_Opp)
+test_data2$countDaysRestTeam_Opp = ifelse(test_data2$countDaysRestTeam_Opp > 100, 4, test_data2$countDaysRestTeam_Opp)
+
+oreb_train_data3 = train_data2 %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:58, 60:61, 64:68)) 
+oreb_test_data3 = test_data2 %>% select(-c(1:7, 13:18, 21:22, 24:26, 29, 35:36, 43:49, 52:58, 60:61, 64:68)) 
+```
+
+# Modeling on Outlier Removed Data 
+
+## Linear Regression 
+```{r}
+#variable selection -- stepwise 
+full = lm(orebTeam~., data=oreb_train_data3)
+summary(full)
+MSE = (summary(full)$sigma)^2
+none = lm(orebTeam~1, data=oreb_train_data3)
+step(none, scope=list(upper=full), scale=MSE, trace=FALSE)
+#backward selection
+step(full, scale = MSE, trace=FALSE)
+#forward selection
+step(none, scope=list(upper=full), scale=MSE, direction="forward", trace=FALSE)
+
+#stepwise selection
+lin_mod1 = lm(formula = orebTeam ~ ptsSecondChance + pctTS + ratioPIE + 
+    ptsPaint + pctFG2Team + tovTeam + drebTeam + stlTeam + astTeam + 
+    ptsOffTOV + ptsFastBreak + blkTeam + ratioPIE_Opp + pctUSGE, 
+    data = oreb_train_data3)
+summary(lin_mod1)
+#backward/forward selection 
+lin_mod2 = lm(formula = orebTeam ~ pctFG2Team + drebTeam + astTeam + stlTeam + 
+    blkTeam + tovTeam + ptsOffTOV + ptsSecondChance + ptsFastBreak + 
+    ptsPaint + pctTS + pctUSGE + ratioPIE + ratioPIE_Opp, data = oreb_train_data3)
+summary(lin_mod2)
+
+
+step_predictions = predict(lin_mod1, newdata = oreb_test_data3)
+back_predictions = predict(lin_mod2, newdata = oreb_test_data3)
+
+rmse(oreb_test_data3$orebTeam, step_predictions) #2.436942
+rmse(oreb_test_data3$orebTeam, back_predictions) #2.436942
+```
+
+## Linear Ridge Regresion Model 
+```{r}
+#setting up the data
+train_x2 = model.matrix(orebTeam~., oreb_train_data3)[,-1] # trim off the first column leaving only the predictors
+train_y2 = oreb_train_data3 %>%
+  select(orebTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+test_x2 = model.matrix(orebTeam~., oreb_test_data3)[,-1] 
+test_y2 = oreb_test_data3 %>%
+  select(orebTeam) %>%
+  unlist() %>%
+  as.numeric()
+
+#testing lambdas 
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv <- cv.glmnet(x, y, alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv$lambda.min
+# optimal_lambda = 0.03162278
+lin_ridge_mod = glmnet(train_x2, train_y2, alpha = 0, lambda = 0.03162278)
+coef(lin_ridge_mod) #coefficients of model 
+
+lin_ridge_predictions <- predict(lin_ridge_mod, s = 0.03162278, newx = test_x2, type='response')
+rmse(oreb_test_data3$orebTeam, lin_ridge_predictions) #2.439171
+mae(oreb_test_data3$orebTeam, lin_ridge_predictions) #1.927598
+```
+
+## Linear LASSO Regression -- BEST MODEL 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+cv_lasso <- cv.glmnet(train_x2, train_y2, alpha = 1, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso$lambda.min
+#ptimal_lambda - 0.01584893
+lin_lasso_mod <- glmnet(x, y, alpha = 1, lambda = 0.01584893, standardize = TRUE)
+coef(lin_lasso_mod)
+
+lin_lasso_predictions <- predict(lin_lasso_mod, s = 0.01584893, newx = test_x2, type='response')
+rmse(oreb_test_data3$orebTeam, lin_lasso_predictions) #2.435226
+mae(oreb_test_data3$orebTeam, lin_lasso_predictions) #1.948236
+```
+
+## Poisson Model 
+```{r}
+pois_mod1 = glm(orebTeam~., data=oreb_train_data3, family=poisson())
+anova(pois_mod1, test="Chi")
+
+pois_mod2=glm(orebTeam~pctFG3Team+pctFTTeam+pctFG2Team+astTeam+ptsOffTOV+ptsSecondChance+ptsFastBreak+ptsPaint+pctTS+pace+ratioPIE, data=oreb_train_data3, family=poisson())
+summary(pois_mod2)
+
+poisson_predictions = predict(pois_mod2, newdata = oreb_test_data3, type='response')
+rmse(oreb_test_data3$orebTeam, poisson_predictions) #2.56371
+mae(oreb_test_data3$orebTeam, poisson_predictions) #2.006969
+```
+
+## Poisson Ridge Regression 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv2 <- cv.glmnet(train_x2, train_y2, family='poisson', alpha = 0, lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv2$lambda.min
+# optimal_lambda = 0.1258925
+pois_ridge_mod = glmnet(train_x2, train_y2, family='poisson', alpha = 0, lambda = 0.1258925)
+coef(pois_ridge_mod) #coefficients of model 
+
+pois_ridge_predictions <- predict(pois_ridge_mod, s = 0.1258925, newx = test_x2, type='response')
+rmse(oreb_test_data3$orebTeam, pois_ridge_predictions) #2.495586
+mae(oreb_test_data3$orebTeam, pois_ridge_predictions) #1.947624
+```
+
+## Poisson LASSO Regression 
+```{r}
+lambdas <- 10^seq(2, -3, by = -.1)
+
+cv_lasso2 <- cv.glmnet(train_x2, train_y2, alpha = 1, family='poisson', lambda=lambdas)
+# Display the best lambda value
+optimal_lambda = cv_lasso2$lambda.min
+#optimal_lambda = 0.01584893
+pois_lasso_mod <- glmnet(train_x2, train_y2, alpha = 1, family='poisson', lambda = 0.01584893, standardize = TRUE)
+coef(pois_lasso_mod)
+
+pois_lasso_predictions <- predict(pois_lasso_mod, s = 0.01584893, newx = test_x2, type='response')
+rmse(oreb_test_data3$orebTeam, pois_lasso_predictions) #2.489072
+mae(oreb_test_data3$orebTeam, pois_lasso_predictions) #1.941787
+```
+
+# Testing Linear LASSO Model on Game by Game Log Data 
+
+## TEST - SPURS @ WARRIORS 
+```{r}
+#new data frame with Warrior data
+data_warrior = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame='H', countDaysRestTeam=2,pctFG3Team=0,  pctFTTeam=0.8217143, pctFG2Team=0.6035138, orebTeam=0, drebTeam=34.28571, astTeam=30.14286, stlTeam=7.428571, blkTeam=4.285714, tovTeam=14.14286, pfTeam=0, rateFTA=0, ptsOffTOV=18.14286, ptsSecondChance=15.42857, ptsFastBreak=15.14286, ptsPaint=49.14286, pfd=0, pctTS=.619, pctUSGE=.1984286, pace=101.5, ratioPIE=.5585714, countDaysRestTeam_Opp=0, ratioPIE_Opp=0)
+data_warrior$locationGame <- factor(data_warrior$locationGame, levels = c("H", "A"))
+
+war_x = model.matrix(orebTeam~., data_warrior)[,-1] 
+
+warrior_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = war_x, type='response')
+warrior_prediction #10.16281
+```
+
+```{r}
+#new data frame with Spurs data
+data_spurs = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame='A', countDaysRestTeam=1, pctFG3Team=0,
+pctFTTeam=0.6564286, pctFG2Team=0.4872206, orebTeam=0, drebTeam=31.85714, astTeam=25, stlTeam=6.714286, blkTeam=3.857143, tovTeam=13.71429, pfTeam=0, rateFTA=0, ptsOffTOV=13.42857, ptsSecondChance=13.71429, ptsFastBreak=8.714286, ptsPaint=48, pfd=0, pctTS=.5045714, pctUSGE=.1975714, pace=104.2857, ratioPIE=.3665714, countDaysRestTeam_Opp=0, ratioPIE_Opp=0)
+data_spurs$locationGame <- factor(data_spurs$locationGame, levels = c("H", "A"))
+
+spur_x=model.matrix(orebTeam~., data_spurs)[,-1] 
+
+spur_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = spur_x, type='response')
+spur_prediction #11.31987
+```
+
+## TEST - NETS @ HAWKS
+```{r}
+#new data frame with Nets data
+data_nets = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame='H', countDaysRestTeam=1, pctFG3Team=0,pctFTTeam=0.861125, pctFG2Team=0.5609807, orebTeam=0, drebTeam=30.75, astTeam=24.25, stlTeam=7.25, blkTeam=6.625, tovTeam=13.875, pfTeam=0, rateFTA=0, ptsOffTOV=18.125, ptsSecondChance=16.625, ptsFastBreak=14.125, ptsPaint=45.5, pfd=0, pctTS=.595375, pctUSGE=.1975, pace=96.875, ratioPIE=.505, countDaysRestTeam_Opp=0, ratioPIE_Opp=0)
+data_nets$locationGame <- factor(data_nets$locationGame, levels = c("H", "A"))
+
+net_x=model.matrix(orebTeam~., data_nets)[,-1] 
+
+net_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = net_x, type='response')
+net_prediction #10.81285
+```
+
+```{r}
+#new data frame with Hawks data
+data_hawks = data.frame(isBNB=0, isBNBFirst=0, isBNBSecond=0, locationGame='A', countDaysRestTeam=1, pctFG3Team=0,pctFTTeam=0.823, pctFG2Team=0.5340038, orebTeam=0, drebTeam=32.375, astTeam=24.75, stlTeam=6.625, blkTeam=5.125, tovTeam=12.625, pfTeam=0, rateFTA=0, ptsOffTOV=15.375, ptsSecondChance=19.375, ptsFastBreak=13.5, ptsPaint=59.25, pfd=0, pctTS=.586, pctUSGE=.198, pace=101.25, ratioPIE=.50675, countDaysRestTeam_Opp=0, ratioPIE_Opp=0)
+data_hawks$locationGame <- factor(data_hawks$locationGame, levels = c("H", "A"))
+
+hawk_x=model.matrix(orebTeam~., data_hawks)[,-1] 
+
+hawk_prediction <- predict(lin_lasso_mod, lambda = 0.01584893, newx = hawk_x, type='response')
+hawk_prediction #13.38066
+```
+
+# FINAL PREDICTIONS 
+```{r}
+#Set up the data 
+# CSV comes from Prediction_Matchups_Oreb from Playoffs_2-Data_Cleaning.Rmd
+oreb_data = read_csv('Oreb_Predictions.csv')
+oreb_data_vars=oreb_data %>% select(-c(1:4))
+oreb_data_vars$locationGame <- factor(oreb_data_vars$locationGame, levels = c("H", "A"))
+
+oreb_x = model.matrix(orebTeam~., oreb_data_vars)[,-1] 
+
+#Predict
+oreb_predictions_final = predict(lin_lasso_mod, lambda = 0.01584893, newx = oreb_x, type='response')
+head(oreb_predictions_final)
+```
+
