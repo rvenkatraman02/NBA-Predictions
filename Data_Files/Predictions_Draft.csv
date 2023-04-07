@@ -1,0 +1,111 @@
+"Date","Matchup","TeamName","Home","PointsPredictions","OrebPredictions"
+"4/9/2023","Atlanta Hawks | Boston Celtics","Atlanta Hawks","Boston Celtics",122.521141409327,13.9351177777029
+"4/9/2023","Atlanta Hawks | Boston Celtics","Boston Celtics","Boston Celtics",127.277869842411,7.87516121078712
+"4/4/2023","Atlanta Hawks | Chicago Bulls","Atlanta Hawks","Chicago Bulls",118.296406851751,13.0524735618267
+"4/4/2023","Atlanta Hawks | Chicago Bulls","Chicago Bulls","Chicago Bulls",110.321264671619,9.1544197733838
+"4/7/2023","Atlanta Hawks | Philadelphia 76ers","Atlanta Hawks","Atlanta Hawks",118.564869591832,12.9988512527808
+"4/7/2023","Atlanta Hawks | Philadelphia 76ers","Philadelphia 76ers","Atlanta Hawks",108.245281308862,8.93801038570933
+"4/5/2023","Atlanta Hawks | Washington Wizards","Atlanta Hawks","Atlanta Hawks",122.559235566071,12.8215374278213
+"4/5/2023","Atlanta Hawks | Washington Wizards","Washington Wizards","Atlanta Hawks",114.927883969633,9.19033925681727
+"4/4/2023","Boston Celtics | Philadelphia 76ers","Boston Celtics","Philadelphia 76ers",122.513866401337,7.94488127852501
+"4/4/2023","Boston Celtics | Philadelphia 76ers","Philadelphia 76ers","Philadelphia 76ers",107.806130420021,8.55071635361418
+"4/5/2023","Boston Celtics | Toronto Raptors","Boston Celtics","Boston Celtics",122.704056314103,9.22187639202995
+"4/7/2023","Boston Celtics | Toronto Raptors","Boston Celtics","Boston Celtics",122.733794602419,9.25383664092573
+"4/5/2023","Boston Celtics | Toronto Raptors","Toronto Raptors","Boston Celtics",113.05155716648,11.0723742632029
+"4/7/2023","Boston Celtics | Toronto Raptors","Toronto Raptors","Boston Celtics",113.081295454796,11.1043345120987
+"4/5/2023","Brooklyn Nets | Detroit Pistons","Brooklyn Nets","Detroit Pistons",115.085322962367,11.8438303710811
+"4/5/2023","Brooklyn Nets | Detroit Pistons","Detroit Pistons","Detroit Pistons",110.52129436128,11.3809012131654
+"4/4/2023","Brooklyn Nets | Minnesota Timberwolves","Brooklyn Nets","Brooklyn Nets",112.849875184472,12.1094992322958
+"4/4/2023","Brooklyn Nets | Minnesota Timberwolves","Minnesota Timberwolves","Brooklyn Nets",119.760301970771,11.3784563139117
+"4/7/2023","Brooklyn Nets | Orlando Magic","Brooklyn Nets","Brooklyn Nets",110.985634681006,12.3586501364345
+"4/7/2023","Brooklyn Nets | Orlando Magic","Orlando Magic","Brooklyn Nets",113.944073272077,9.05436103401687
+"4/9/2023","Brooklyn Nets | Philadelphia 76ers","Brooklyn Nets","Brooklyn Nets",112.472165770045,10.963632646937
+"4/9/2023","Brooklyn Nets | Philadelphia 76ers","Philadelphia 76ers","Brooklyn Nets",111.636786081944,10.4751565860128
+"4/9/2023","Charlotte Hornets | Cleveland Cavaliers","Charlotte Hornets","Cleveland Cavaliers",106.282639860483,10.4383687878213
+"4/9/2023","Charlotte Hornets | Cleveland Cavaliers","Cleveland Cavaliers","Cleveland Cavaliers",115.029456554955,10.3716411863741
+"4/7/2023","Charlotte Hornets | Houston Rockets","Charlotte Hornets","Charlotte Hornets",107.79891486405,10.7587984618637
+"4/7/2023","Charlotte Hornets | Houston Rockets","Houston Rockets","Charlotte Hornets",110.186179796034,10.2664257008739
+"4/4/2023","Charlotte Hornets | Toronto Raptors","Charlotte Hornets","Charlotte Hornets",108.542336488463,9.5649472176831
+"4/4/2023","Charlotte Hornets | Toronto Raptors","Toronto Raptors","Charlotte Hornets",119.185021086806,11.4094030824405
+"4/7/2023","Chicago Bulls | Dallas Mavericks","Chicago Bulls","Dallas Mavericks",114.644848818678,7.70925701312942
+"4/7/2023","Chicago Bulls | Dallas Mavericks","Dallas Mavericks","Dallas Mavericks",113.893769132956,6.92576801079342
+"4/9/2023","Chicago Bulls | Detroit Pistons","Chicago Bulls","Chicago Bulls",114.735121009078,8.99441882682132
+"4/9/2023","Chicago Bulls | Detroit Pistons","Detroit Pistons","Chicago Bulls",108.059951765329,11.1270202303513
+"4/5/2023","Chicago Bulls | Milwaukee Bucks","Chicago Bulls","Milwaukee Bucks",109.459752712953,9.0637356717239
+"4/5/2023","Chicago Bulls | Milwaukee Bucks","Milwaukee Bucks","Milwaukee Bucks",117.89047930907,9.14030997263063
+"4/4/2023","Cleveland Cavaliers | Orlando Magic","Cleveland Cavaliers","Orlando Magic",111.058412766415,11.1049242443254
+"4/6/2023","Cleveland Cavaliers | Orlando Magic","Cleveland Cavaliers","Orlando Magic",111.058412766415,11.1049242443254
+"4/4/2023","Cleveland Cavaliers | Orlando Magic","Orlando Magic","Orlando Magic",110.141127791503,9.714135239268
+"4/6/2023","Cleveland Cavaliers | Orlando Magic","Orlando Magic","Orlando Magic",110.141127791503,9.714135239268
+"4/5/2023","Dallas Mavericks | Sacramento Kings","Dallas Mavericks","Dallas Mavericks",116.057476174933,7.37233942822141
+"4/5/2023","Dallas Mavericks | Sacramento Kings","Sacramento Kings","Dallas Mavericks",119.413867038004,8.82651995578768
+"4/9/2023","Dallas Mavericks | San Antonio Spurs","Dallas Mavericks","Dallas Mavericks",120.291950476439,6.90923076809331
+"4/9/2023","Dallas Mavericks | San Antonio Spurs","San Antonio Spurs","Dallas Mavericks",111.253512599539,12.1478522091494
+"4/4/2023","Denver Nuggets | Houston Rockets","Denver Nuggets","Houston Rockets",121.555036063128,9.76417313164527
+"4/4/2023","Denver Nuggets | Houston Rockets","Houston Rockets","Houston Rockets",107.872757243653,10.5081354303034
+"4/6/2023","Denver Nuggets | Phoenix Suns","Denver Nuggets","Phoenix Suns",118.908233298007,9.99403395673445
+"4/6/2023","Denver Nuggets | Phoenix Suns","Phoenix Suns","Phoenix Suns",116.721766331771,10.5854400279647
+"4/9/2023","Denver Nuggets | Sacramento Kings","Denver Nuggets","Denver Nuggets",118.406252550293,9.3922241638523
+"4/9/2023","Denver Nuggets | Sacramento Kings","Sacramento Kings","Denver Nuggets",117.929640305941,8.95900865862074
+"4/8/2023","Denver Nuggets | Utah Jazz","Denver Nuggets","Utah Jazz",115.995622875932,10.1316047486063
+"4/8/2023","Denver Nuggets | Utah Jazz","Utah Jazz","Utah Jazz",113.992792613861,10.1607464987859
+"4/7/2023","Detroit Pistons | Indiana Pacers","Detroit Pistons","Indiana Pacers",109.235097004231,12.3462843982776
+"4/7/2023","Detroit Pistons | Indiana Pacers","Indiana Pacers","Indiana Pacers",113.089942985692,11.8510563809447
+"4/4/2023","Detroit Pistons | Miami Heat","Detroit Pistons","Detroit Pistons",105.844745608923,10.832377494343
+"4/4/2023","Detroit Pistons | Miami Heat","Miami Heat","Detroit Pistons",112.984361241716,8.94026559371839
+"4/4/2023","Golden State Warriors | Oklahoma City Thunder","Golden State Warriors","Golden State Warriors",122.495496839789,9.99834714810764
+"4/4/2023","Golden State Warriors | Oklahoma City Thunder","Oklahoma City Thunder","Golden State Warriors",114.559676468874,10.2997730360668
+"4/9/2023","Golden State Warriors | Portland Trail Blazers","Golden State Warriors","Portland Trail Blazers",118.127096325322,10.5586983108954
+"4/9/2023","Golden State Warriors | Portland Trail Blazers","Portland Trail Blazers","Portland Trail Blazers",108.002942771453,9.59390113149453
+"4/7/2023","Golden State Warriors | Sacramento Kings","Golden State Warriors","Sacramento Kings",117.753368719509,9.43980327498428
+"4/7/2023","Golden State Warriors | Sacramento Kings","Sacramento Kings","Sacramento Kings",119.0444771193,9.30598574026928
+"4/9/2023","Houston Rockets | Washington Wizards","Houston Rockets","Washington Wizards",108.569312349206,11.0590622723554
+"4/9/2023","Houston Rockets | Washington Wizards","Washington Wizards","Washington Wizards",113.95162760471,9.46548738360453
+"4/5/2023","Indiana Pacers | New York Knicks","Indiana Pacers","Indiana Pacers",110.767805830034,10.5354124444929
+"4/9/2023","Indiana Pacers | New York Knicks","Indiana Pacers","New York Knicks",110.738067541718,10.5671646330231
+"4/5/2023","Indiana Pacers | New York Knicks","New York Knicks","Indiana Pacers",121.017677290965,8.74300557179649
+"4/9/2023","Indiana Pacers | New York Knicks","New York Knicks","New York Knicks",120.987939002649,8.64733288547471
+"4/5/2023","Los Angeles Clippers | Los Angeles Lakers","Los Angeles Clippers","Los Angeles Clippers",117.471310255782,7.4995956336423
+"4/5/2023","Los Angeles Clippers | Los Angeles Lakers","Los Angeles Lakers","Los Angeles Clippers",110.700818120532,9.77159901041039
+"4/9/2023","Los Angeles Clippers | Phoenix Suns","Los Angeles Clippers","Phoenix Suns",112.127836247248,8.82702966417933
+"4/9/2023","Los Angeles Clippers | Phoenix Suns","Phoenix Suns","Phoenix Suns",117.071492621437,11.0630187990908
+"4/8/2023","Los Angeles Clippers | Portland Trail Blazers","Los Angeles Clippers","Los Angeles Clippers",117.636642607919,10.0006195553897
+"4/8/2023","Los Angeles Clippers | Portland Trail Blazers","Portland Trail Blazers","Los Angeles Clippers",105.57513461087,9.79221174776166
+"4/7/2023","Los Angeles Lakers | Phoenix Suns","Los Angeles Lakers","Los Angeles Lakers",113.545737141859,8.88480968704269
+"4/7/2023","Los Angeles Lakers | Phoenix Suns","Phoenix Suns","Los Angeles Lakers",119.112141706172,9.93856197215341
+"4/4/2023","Los Angeles Lakers | Utah Jazz","Los Angeles Lakers","Utah Jazz",115.505488126084,9.31895804939504
+"4/9/2023","Los Angeles Lakers | Utah Jazz","Los Angeles Lakers","Los Angeles Lakers",115.505488126084,9.25524561196904
+"4/4/2023","Los Angeles Lakers | Utah Jazz","Utah Jazz","Utah Jazz",120.160590091988,11.0758299405287
+"4/9/2023","Los Angeles Lakers | Utah Jazz","Utah Jazz","Los Angeles Lakers",120.130851803672,11.1075821290589
+"4/7/2023","Memphis Grizzlies | Milwaukee Bucks","Memphis Grizzlies","Milwaukee Bucks",130.771823812955,10.773001669649
+"4/7/2023","Memphis Grizzlies | Milwaukee Bucks","Milwaukee Bucks","Milwaukee Bucks",119.417190181442,7.93154999152752
+"4/5/2023","Memphis Grizzlies | New Orleans Pelicans","Memphis Grizzlies","New Orleans Pelicans",124.872976098497,11.0056614719463
+"4/5/2023","Memphis Grizzlies | New Orleans Pelicans","New Orleans Pelicans","New Orleans Pelicans",117.45620893745,11.6371193458998
+"4/9/2023","Memphis Grizzlies | Oklahoma City Thunder","Memphis Grizzlies","Oklahoma City Thunder",125.045429899871,10.5193734806952
+"4/9/2023","Memphis Grizzlies | Oklahoma City Thunder","Oklahoma City Thunder","Oklahoma City Thunder",111.595496852645,11.8301738288875
+"4/4/2023","Memphis Grizzlies | Portland Trail Blazers","Memphis Grizzlies","Memphis Grizzlies",125.173301406567,10.0239976052284
+"4/4/2023","Memphis Grizzlies | Portland Trail Blazers","Portland Trail Blazers","Memphis Grizzlies",107.090650995229,9.92384814365864
+"4/9/2023","Miami Heat | Orlando Magic","Miami Heat","Miami Heat",110.995565247181,9.22015832227726
+"4/9/2023","Miami Heat | Orlando Magic","Orlando Magic","Miami Heat",112.497427425654,9.1200730449549
+"4/6/2023","Miami Heat | Philadelphia 76ers","Miami Heat","Philadelphia 76ers",110.583939721033,8.91760432834434
+"4/6/2023","Miami Heat | Philadelphia 76ers","Philadelphia 76ers","Philadelphia 76ers",108.417944330447,9.23916723487467
+"4/7/2023","Miami Heat | Washington Wizards","Miami Heat","Washington Wizards",112.476333785828,9.78137784464616
+"4/7/2023","Miami Heat | Washington Wizards","Washington Wizards","Washington Wizards",110.548408478193,9.28261168771975
+"4/9/2023","Milwaukee Bucks | Toronto Raptors","Milwaukee Bucks","Toronto Raptors",120.193909306642,7.06857526767862
+"4/9/2023","Milwaukee Bucks | Toronto Raptors","Toronto Raptors","Toronto Raptors",112.204558933075,11.669069310215
+"4/4/2023","Milwaukee Bucks | Washington Wizards","Milwaukee Bucks","Washington Wizards",118.981109847515,8.93773408492237
+"4/4/2023","Milwaukee Bucks | Washington Wizards","Washington Wizards","Washington Wizards",114.755820502653,10.4690261063432
+"4/9/2023","Minnesota Timberwolves | New Orleans Pelicans","Minnesota Timberwolves","Minnesota Timberwolves",119.017308010235,9.66366347939718
+"4/9/2023","Minnesota Timberwolves | New Orleans Pelicans","New Orleans Pelicans","Minnesota Timberwolves",118.480948918024,10.473685391137
+"4/8/2023","Minnesota Timberwolves | San Antonio Spurs","Minnesota Timberwolves","San Antonio Spurs",118.939822074549,10.3282219273527
+"4/8/2023","Minnesota Timberwolves | San Antonio Spurs","San Antonio Spurs","San Antonio Spurs",108.280711388108,11.6054790891886
+"4/7/2023","New Orleans Pelicans | New York Knicks","New Orleans Pelicans","New Orleans Pelicans",119.632776634333,11.5652366732577
+"4/7/2023","New Orleans Pelicans | New York Knicks","New York Knicks","New Orleans Pelicans",123.493292035899,8.24305876145273
+"4/4/2023","New Orleans Pelicans | Sacramento Kings","New Orleans Pelicans","New Orleans Pelicans",123.113305420392,10.1764102498936
+"4/4/2023","New Orleans Pelicans | Sacramento Kings","Sacramento Kings","New Orleans Pelicans",117.572665605648,8.4713056988299
+"4/6/2023","Oklahoma City Thunder | Utah Jazz","Oklahoma City Thunder","Utah Jazz",115.441972956379,12.2672569405832
+"4/6/2023","Oklahoma City Thunder | Utah Jazz","Utah Jazz","Utah Jazz",114.495975327686,11.25416562091
+"4/4/2023","Phoenix Suns | San Antonio Spurs","Phoenix Suns","Phoenix Suns",121.943433590783,11.0973546802583
+"4/4/2023","Phoenix Suns | San Antonio Spurs","San Antonio Spurs","Phoenix Suns",103.489263978063,10.7786405752967
+"4/6/2023","Portland Trail Blazers | San Antonio Spurs","Portland Trail Blazers","San Antonio Spurs",114.055744629736,8.50384139678405
+"4/6/2023","Portland Trail Blazers | San Antonio Spurs","San Antonio Spurs","San Antonio Spurs",108.895775401671,10.7300673883902
