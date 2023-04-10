@@ -33,3 +33,5 @@ In this repositiory you will find our Rmd notebook files for both the cleaning a
 | **April 8**  |   6.440    |       38.440       |            1.130         |
 | **April 9**  |    21.699   |        23.063      |           4.668          |
 | **Cumulative**  |    15.903   |       22.904       |          5.519           |
+
+_* Please note that our model did not account for players resting for the final regular season games, resulting in unexpected results. Additionally we were asked to predict all 6 days of games on April 3rd, so we could not adjust accordingly each day._
