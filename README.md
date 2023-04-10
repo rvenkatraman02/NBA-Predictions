@@ -27,12 +27,12 @@ In this repositiory you will find our Rmd notebook files for both the cleaning a
 
 |              | Spread | Total Points | Offensive Rebounds |
 |--------------|-------:|-------------:|-------------------:|
-| **April 4**  |   13.504    |      19.046        |       6.824           |
-| **April 5**  |    8.161   |        26.015      |          6.247           |
-| **April 6**  |   17.415    |       18.012       |          4.506           |
-| **April 7**  |   13.844    |       20.644       |          5.440           |
-| **April 8**  |   6.440    |       38.440       |            1.130         |
-| **April 9**  |    21.699   |        23.063      |           4.668          |
-| **Cumulative**  |    15.903   |       22.904       |          5.519           |
+| **April 4 _(13)_**  |   13.504    |      19.046        |       6.824           |
+| **April 5 _(8)_**  |    8.161   |        26.015      |          6.247           |
+| **April 6 _(5)_**  |   17.415    |       18.012       |          4.506           |
+| **April 7 _(11)_**  |   13.844    |       20.644       |          5.440           |
+| **April 8 _(3)_**  |   6.440    |       38.440       |            1.130         |
+| **April 9 _(15)_**  |    21.699   |        23.063      |           4.668          |
+| **Cumulative _(55)_**  |    15.903   |       22.904       |          5.519           |
 
 _* Please note that our model did not account for players resting for the final regular season games, resulting in unexpected results. Additionally we were asked to predict all 6 days of games on April 3rd, so we could not adjust accordingly each day._
