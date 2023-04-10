@@ -26,9 +26,10 @@ In this repositiory you will find our Rmd notebook files for both the cleaning a
 
 |              | Spread | Total Points | Offensive Rebounds |
 |--------------|-------:|-------------:|-------------------:|
-| **April 4**  |       |              |                     |
-| **April 5**  |       |              |                     |
-| **April 6**  |       |              |                     |
-| **April 7**  |       |              |                     |
-| **April 8**  |       |              |                     |
-| **April 9**  |       |              |                     |
+| **April 4**  |   13.504    |      19.046        |       6.824           |
+| **April 5**  |    8.161   |        26.015      |          6.247           |
+| **April 6**  |   17.415    |       18.012       |          4.506           |
+| **April 7**  |   13.844    |       20.644       |          5.440           |
+| **April 8**  |   6.440    |       38.440       |            1.130         |
+| **April 9**  |    21.699   |        23.063      |           4.668          |
+| **Cumulative**  |    15.903   |       22.904       |          5.519           |
