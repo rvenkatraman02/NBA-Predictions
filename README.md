@@ -20,6 +20,7 @@ In this repositiory you will find our Rmd notebook files for both the cleaning a
 `Playoffs_2-Pts_Modeling.Rmd`: R notebook file used to model and predict points scored by team. <br>
 `Playoffs_2-Oreb_Modeling.Rmd`: R notebook file used to model and predict offensive rebounds by team. <br>
 `Predictions_FINAL.csv`: CSV file containing our final predictions. <br>
+`Predictions_ACCURACY.xlsx`: Excel file containing our predictions in comparison to Vegas predictions and the acual results. <br>
 `2023_NBA_Predictions_Report.pdf`: Final report with our methodologies for the whole project. <br>
 
 ### RMSE of NBA Predictions
