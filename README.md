@@ -25,7 +25,7 @@ In this repositiory you will find our Rmd notebook files for both the cleaning a
 
 ### RMSE of NBA Predictions
 
-|              | Spread | Total Points | Offensive Rebounds |
+|  Date _(Games)_            | Spread | Total Points | Offensive Rebounds |
 |--------------|-------:|-------------:|-------------------:|
 | **April 4 _(13)_**  |   13.504    |      19.046        |       6.824           |
 | **April 5 _(8)_**  |    8.161   |        26.015      |          6.247           |
