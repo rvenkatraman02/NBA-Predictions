@@ -4,8 +4,11 @@
 I worked in a group of five people for my STOR 538 (Sports Analytics) class project, with a goal of predicting the scores and offensive rebounds for the last six days of the 2023 NBA regular season (April 4th - April 9th).
 
 _Here are the formulas for the metrics we were predicting:_
+
 $$\text{Spread} = \text{Home Points} - \text{Away Points}$$
+
 $$\text{Total Points} = \text{Home Points} + \text{Away Points}$$
+
 $$\text{Offensive Rebounds} = \text{Home Offensive Rebounds} + \text{Away Offensive Rebounds}$$
 
 This project was a comprehensive data analysis effort that required meticulous data cleaning, modeling, and evaluation. We obtained the necessary data from the [nbastatR package provided by Alex Bresler](https://www.rdocumentation.org/packages/nbastatR/versions/0.1.10131), which allowed us to access and analyze both basic and advanced statistics on a game log level.
